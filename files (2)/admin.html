@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة تحكم | 7oseeeFile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #08080e;
+  --surface: #0f0f17;
+  --surface2: #16161f;
+  --surface3: #1e1e2a;
+  --accent: #7c3aed;
+  --accent2: #a78bfa;
+  --accent3: #c084fc;
+  --text: #ededff;
+  --text2: #8888aa;
+  --text3: #5555770;
+  --border: rgba(120,120,200,0.12);
+  --border2: rgba(120,120,200,0.22);
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --info: #3b82f6;
+  --sidebar-w: 260px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Cairo',sans-serif; background:var(--bg); color:var(--text); display:flex; min-height:100vh; }
+
+/* LOGIN */
+.login-screen {
+  position:fixed; inset:0; background:var(--bg); z-index:1000;
+  display:flex; align-items:center; justify-content:center;
+}
+.login-box {
+  background:var(--surface); border:1px solid var(--border2);
+  border-radius:20px; padding:3rem; width:100%; max-width:400px; text-align:center;
+}
+.login-box .logo { font-family:'Space Mono',monospace; font-size:1.4rem; color:var(--accent2); margin-bottom:0.5rem; }
+.login-box p { color:var(--text2); font-size:0.9rem; margin-bottom:2rem; }
+.input-group { margin-bottom:1rem; text-align:right; }
+.input-group label { display:block; font-size:0.85rem; color:var(--text2); margin-bottom:6px; }
+.input-group input { width:100%; background:var(--surface2); border:1px solid var(--border2); color:var(--text); padding:12px 16px; border-radius:10px; font-family:'Cairo',sans-serif; font-size:0.95rem; outline:none; transition:border 0.2s; }
+.input-group input:focus { border-color:var(--accent); }
+.login-btn { width:100%; background:var(--accent); color:white; border:none; padding:14px; border-radius:10px; font-family:'Cairo',sans-serif; font-size:1rem; font-weight:700; cursor:pointer; margin-top:0.5rem; transition:all 0.2s; }
+.login-btn:hover { background:#6d28d9; }
+.login-err { color:var(--danger); font-size:0.85rem; margin-top:0.75rem; display:none; }
+
+/* SIDEBAR */
+.sidebar {
+  width:var(--sidebar-w); background:var(--surface); border-left:1px solid var(--border);
+  height:100vh; position:fixed; right:0; top:0; display:flex; flex-direction:column;
+  z-index:10; overflow-y:auto;
+}
+.sidebar-logo { padding:1.5rem; border-bottom:1px solid var(--border); }
+.sidebar-logo .brand { font-family:'Space Mono',monospace; font-size:1.1rem; color:var(--accent2); }
+.sidebar-logo .sub { font-size:0.75rem; color:var(--text2); margin-top:2px; }
+.sidebar-nav { padding:1rem 0; flex:1; }
+.nav-section { padding:0.5rem 1rem; font-size:0.7rem; color:var(--text2); text-transform:uppercase; letter-spacing:1.5px; margin-top:0.5rem; }
+.nav-item {
+  display:flex; align-items:center; gap:12px; padding:10px 1.25rem;
+  cursor:pointer; border-radius:0; transition:all 0.2s; font-size:0.9rem;
+  color:var(--text2); text-decoration:none; border-right:3px solid transparent;
+  position:relative;
+}
+.nav-item:hover { background:rgba(124,58,237,0.08); color:var(--text); }
+.nav-item.active { color:var(--accent2); background:rgba(124,58,237,0.12); border-right-color:var(--accent); }
+.nav-item .badge { margin-right:auto; background:var(--accent); color:white; font-size:0.7rem; padding:2px 7px; border-radius:100px; min-width:20px; text-align:center; }
+.nav-icon { font-size:1.1rem; width:20px; text-align:center; }
+.sidebar-footer { padding:1rem 1.25rem; border-top:1px solid var(--border); }
+.admin-info { display:flex; align-items:center; gap:10px; }
+.admin-avatar { width:36px; height:36px; background:linear-gradient(135deg,var(--accent),var(--accent3)); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.85rem; }
+.admin-name { font-size:0.85rem; font-weight:600; }
+.admin-role { font-size:0.75rem; color:var(--text2); }
+.logout-btn { background:none; border:none; color:var(--text2); cursor:pointer; font-size:1rem; margin-right:auto; padding:4px 8px; border-radius:6px; transition:color 0.2s; }
+.logout-btn:hover { color:var(--danger); }
+
+/* MAIN */
+.main { margin-right:var(--sidebar-w); flex:1; min-height:100vh; }
+.topbar { background:var(--surface); border-bottom:1px solid var(--border); padding:0 2rem; height:64px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:5; }
+.topbar h1 { font-size:1.1rem; font-weight:700; }
+.topbar-actions { display:flex; gap:10px; }
+.btn-sm { background:var(--accent); color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-family:'Cairo',sans-serif; font-size:0.85rem; transition:opacity 0.2s; }
+.btn-sm:hover { opacity:0.85; }
+.btn-sm.danger { background:var(--danger); }
+.btn-sm.outline { background:transparent; border:1px solid var(--border2); color:var(--text); }
+.btn-sm.outline:hover { background:var(--surface2); }
+
+.content { padding:2rem; }
+.page { display:none; }
+.page.active { display:block; }
+
+/* STATS CARDS */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; margin-bottom:2rem; }
+.stat-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:1.25rem; position:relative; overflow:hidden; }
+.stat-card::after { content:''; position:absolute; top:0; right:0; left:0; height:3px; background:var(--c,var(--accent)); }
+.stat-card.green { --c:var(--success); }
+.stat-card.red { --c:var(--danger); }
+.stat-card.blue { --c:var(--info); }
+.stat-card.yellow { --c:var(--warning); }
+.stat-label { font-size:0.8rem; color:var(--text2); margin-bottom:0.5rem; }
+.stat-value { font-size:1.8rem; font-weight:900; font-family:'Space Mono',monospace; }
+.stat-change { font-size:0.75rem; color:var(--text2); margin-top:4px; }
+.stat-icon { position:absolute; top:1rem; left:1rem; font-size:1.5rem; opacity:0.4; }
+
+/* TABLE */
+.card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:1.5rem; }
+.card-header { padding:1rem 1.5rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.card-header h2 { font-size:1rem; font-weight:700; }
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; }
+th { padding:10px 1rem; text-align:right; font-size:0.78rem; color:var(--text2); background:var(--surface2); font-weight:600; white-space:nowrap; }
+td { padding:12px 1rem; font-size:0.875rem; border-top:1px solid var(--border); vertical-align:middle; }
+tr:hover td { background:rgba(124,58,237,0.04); }
+.badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:100px; font-size:0.75rem; font-weight:600; }
+.badge.success { background:rgba(16,185,129,0.15); color:var(--success); }
+.badge.danger { background:rgba(239,68,68,0.15); color:var(--danger); }
+.badge.warning { background:rgba(245,158,11,0.15); color:var(--warning); }
+.badge.info { background:rgba(59,130,246,0.15); color:var(--info); }
+.badge.purple { background:rgba(124,58,237,0.15); color:var(--accent2); }
+.file-ext-badge { background:rgba(124,58,237,0.2); color:var(--accent2); padding:2px 8px; border-radius:4px; font-size:0.72rem; font-family:'Space Mono',monospace; font-weight:700; }
+.action-btn { background:none; border:none; color:var(--text2); cursor:pointer; font-size:0.85rem; padding:4px 8px; border-radius:6px; transition:all 0.2s; }
+.action-btn:hover { background:rgba(239,68,68,0.15); color:var(--danger); }
+.action-btn.dl:hover { background:rgba(16,185,129,0.15); color:var(--success); }
+
+/* SEARCH + FILTER */
+.toolbar { display:flex; gap:10px; margin-bottom:1rem; flex-wrap:wrap; }
+.search-input { flex:1; min-width:200px; background:var(--surface2); border:1px solid var(--border2); color:var(--text); padding:9px 14px; border-radius:10px; font-family:'Cairo',sans-serif; font-size:0.9rem; outline:none; }
+.search-input:focus { border-color:var(--accent); }
+.filter-select { background:var(--surface2); border:1px solid var(--border2); color:var(--text); padding:9px 14px; border-radius:10px; font-family:'Cairo',sans-serif; font-size:0.85rem; outline:none; cursor:pointer; }
+
+/* CHART */
+.chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem; }
+.chart-box { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:1.25rem; }
+.chart-title { font-size:0.9rem; font-weight:600; margin-bottom:1rem; color:var(--text2); }
+.bar-chart { display:flex; flex-direction:column; gap:8px; }
+.bar-row { display:flex; align-items:center; gap:10px; font-size:0.8rem; }
+.bar-label { width:60px; text-align:left; color:var(--text2); font-size:0.75rem; }
+.bar-track { flex:1; height:20px; background:var(--surface2); border-radius:4px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--accent),var(--accent3)); transition:width 0.8s ease; display:flex; align-items:center; padding-right:8px; justify-content:flex-end; font-size:0.7rem; color:white; font-weight:600; }
+.pie-chart { display:flex; gap:1rem; align-items:center; }
+.pie-legend { display:flex; flex-direction:column; gap:8px; }
+.pie-item { display:flex; align-items:center; gap:8px; font-size:0.8rem; }
+.pie-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+/* SETTINGS */
+.settings-grid { display:grid; gap:1rem; }
+.setting-row { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.25rem 1.5rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.setting-info h3 { font-size:0.95rem; font-weight:600; margin-bottom:2px; }
+.setting-info p { font-size:0.8rem; color:var(--text2); }
+.toggle { width:46px; height:26px; background:var(--surface3); border-radius:13px; position:relative; cursor:pointer; transition:background 0.3s; flex-shrink:0; }
+.toggle.on { background:var(--accent); }
+.toggle::after { content:''; position:absolute; width:20px; height:20px; background:white; border-radius:50%; top:3px; right:3px; transition:transform 0.3s; }
+.toggle.on::after { transform:translateX(-20px); }
+.setting-input { background:var(--surface2); border:1px solid var(--border2); color:var(--text); padding:8px 14px; border-radius:8px; font-family:'Cairo',sans-serif; font-size:0.9rem; outline:none; width:120px; text-align:center; }
+
+/* TOAST */
+.toast { position:fixed; bottom:2rem; left:2rem; background:var(--surface2); border:1px solid var(--border2); padding:1rem 1.5rem; border-radius:12px; font-size:0.9rem; z-index:9999; transform:translateY(100px); opacity:0; transition:all 0.4s; }
+.toast.show { transform:translateY(0); opacity:1; }
+
+/* EMPTY STATE */
+.empty { padding:4rem; text-align:center; color:var(--text2); }
+.empty .big { font-size:3rem; margin-bottom:1rem; }
+
+@media(max-width:768px){
+  .sidebar{width:100%;height:auto;position:relative;border-left:none;border-bottom:1px solid var(--border)}
+  .main{margin-right:0}
+  .chart-grid{grid-template-columns:1fr}
+  body{flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <div class="logo">7oseeeFile</div>
+    <p>لوحة تحكم المشرف</p>
+    <div class="input-group">
+      <label>اسم المستخدم</label>
+      <input type="text" id="loginUser" placeholder="admin" value="admin">
+    </div>
+    <div class="input-group">
+      <label>كلمة المرور</label>
+      <input type="password" id="loginPass" placeholder="••••••••" onkeyup="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">🔐 دخول</button>
+    <div class="login-err" id="loginErr">❌ بيانات خاطئة! حاول مرة ثانية</div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">7oseeeFile</div>
+    <div class="sub">لوحة التحكم الرئيسية</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">الرئيسية</div>
+    <a class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">📊</span> الإحصائيات</a>
+    <div class="nav-section">الملفات</div>
+    <a class="nav-item" onclick="showPage('files')"><span class="nav-icon">📁</span> إدارة الملفات <span class="badge" id="filesBadge">0</span></a>
+    <a class="nav-item" onclick="showPage('upload')"><span class="nav-icon">⬆️</span> رفع ملف</a>
+    <div class="nav-section">النظام</div>
+    <a class="nav-item" onclick="showPage('settings')"><span class="nav-icon">⚙️</span> الإعدادات</a>
+    <a class="nav-item" onclick="showPage('reports')"><span class="nav-icon">📈</span> التقارير</a>
+    <a class="nav-item" onclick="window.open('index.html','_blank')"><span class="nav-icon">🌐</span> الموقع الرئيسي</a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="admin-info">
+      <div class="admin-avatar">7H</div>
+      <div>
+        <div class="admin-name">7oseee Admin</div>
+        <div class="admin-role">مشرف النظام</div>
+      </div>
+      <button class="logout-btn" onclick="doLogout()" title="خروج">🚪</button>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+  <div class="topbar">
+    <h1 id="pageTitle">📊 الإحصائيات العامة</h1>
+    <div class="topbar-actions">
+      <button class="btn-sm outline" onclick="refreshData()">🔄 تحديث</button>
+      <button class="btn-sm danger" onclick="confirmClearAll()">🗑️ حذف الكل</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">📁</div>
+          <div class="stat-label">إجمالي الملفات</div>
+          <div class="stat-value" id="totalFiles">0</div>
+          <div class="stat-change">في قاعدة البيانات</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-icon">💾</div>
+          <div class="stat-label">المساحة المستخدمة</div>
+          <div class="stat-value" id="totalSize">0 MB</div>
+          <div class="stat-change">من المساحة الكلية</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-icon">⬇️</div>
+          <div class="stat-label">التحميلات الكلية</div>
+          <div class="stat-value" id="totalDownloads">-</div>
+          <div class="stat-change">منذ الإطلاق</div>
+        </div>
+        <div class="stat-card yellow">
+          <div class="stat-icon">📅</div>
+          <div class="stat-label">اليوم</div>
+          <div class="stat-value" id="todayFiles">0</div>
+          <div class="stat-change">ملف مرفوع اليوم</div>
+        </div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="chart-box">
+          <div class="chart-title">📊 الملفات حسب النوع</div>
+          <div class="bar-chart" id="typeChart"></div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-title">📦 توزيع الأحجام</div>
+          <div class="bar-chart" id="sizeChart"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h2>📋 آخر الملفات المرفوعة</h2></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>الملف</th><th>النوع</th><th>الحجم</th><th>التاريخ</th><th>إجراء</th></tr></thead>
+          <tbody id="dashRecentTbl"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- FILES -->
+    <div class="page" id="page-files">
+      <div class="toolbar">
+        <input class="search-input" id="searchInput" placeholder="🔍 ابحث في الملفات..." oninput="renderFilesTable()">
+        <select class="filter-select" id="filterType" onchange="renderFilesTable()">
+          <option value="">كل الأنواع</option>
+          <option value="image">صور</option>
+          <option value="video">فيديو</option>
+          <option value="application">تطبيقات/PDF</option>
+          <option value="text">نصوص</option>
+          <option value="audio">صوت</option>
+        </select>
+        <button class="btn-sm outline" onclick="sortFiles()">↕️ ترتيب</button>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h2>📁 جميع الملفات</h2>
+          <span id="filesCount" style="font-size:0.8rem;color:var(--text2)"></span>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>#</th><th>اسم الملف</th><th>النوع</th><th>الحجم</th><th>تاريخ الرفع</th><th>المعرف</th><th>إجراءات</th></tr></thead>
+          <tbody id="filesTableBody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- UPLOAD -->
+    <div class="page" id="page-upload">
+      <div class="card" style="max-width:600px">
+        <div class="card-header"><h2>⬆️ رفع ملف جديد</h2></div>
+        <div style="padding:2rem">
+          <div style="background:var(--surface2);border:2px dashed rgba(124,58,237,0.4);border-radius:14px;padding:2.5rem;text-align:center;cursor:pointer;position:relative;margin-bottom:1.5rem" id="adminDrop">
+            <input type="file" multiple id="adminFileInput" style="position:absolute;inset:0;opacity:0;cursor:pointer">
+            <div style="font-size:2.5rem;margin-bottom:1rem">📤</div>
+            <h3>اسحب ملفاتك أو اضغط</h3>
+            <p style="color:var(--text2);font-size:0.85rem;margin-top:4px">يدعم جميع الأنواع • حد 2GB</p>
+          </div>
+          <div id="adminProgress" style="display:none;margin-bottom:1rem">
+            <div style="background:var(--surface3);height:8px;border-radius:4px;overflow:hidden">
+              <div id="adminFill" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent3));width:0%;transition:width 0.3s;border-radius:4px"></div>
+            </div>
+            <p id="adminPText" style="font-size:0.8rem;color:var(--text2);margin-top:6px">جاري الرفع...</p>
+          </div>
+          <div id="adminFileList" style="margin-top:1rem"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="card">
+        <div class="card-header"><h2>⚙️ إعدادات الموقع</h2></div>
+        <div style="padding:1.5rem">
+          <div class="settings-grid">
+            <div class="setting-row">
+              <div class="setting-info">
+                <h3>🌐 الموقع مفتوح للعامة</h3>
+                <p>السماح للزوار برفع الملفات بدون تسجيل</p>
+              </div>
+              <div class="toggle on" id="tog1" onclick="toggleSetting(this)"></div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <h3>🔒 كلمة سر للتحميل</h3>
+                <p>طلب كلمة سر عند تحميل الملفات</p>
+              </div>
+              <div class="toggle" id="tog2" onclick="toggleSetting(this)"></div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <h3>📧 إشعارات البريد</h3>
+                <p>إرسال إشعار عند رفع ملف جديد</p>
+              </div>
+              <div class="toggle" id="tog3" onclick="toggleSetting(this)"></div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <h3>🗑️ الحذف التلقائي</h3>
+                <p>حذف الملفات غير المستخدمة تلقائياً</p>
+              </div>
+              <div class="toggle on" id="tog4" onclick="toggleSetting(this)"></div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <h3>📦 الحد الأقصى لحجم الملف</h3>
+                <p>الحد الأقصى المسموح به لكل ملف</p>
+              </div>
+              <input class="setting-input" value="2 GB" readonly>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <h3>🔑 تغيير كلمة مرور الإدارة</h3>
+                <p>تحديث بيانات دخول لوحة التحكم</p>
+              </div>
+              <button class="btn-sm" onclick="changePassword()">تغيير</button>
+            </div>
+            <div class="setting-row" style="background:rgba(239,68,68,0.05);border-color:rgba(239,68,68,0.2)">
+              <div class="setting-info">
+                <h3 style="color:var(--danger)">⚠️ حذف جميع الملفات</h3>
+                <p>تحذير: هذا الإجراء لا يمكن التراجع عنه</p>
+              </div>
+              <button class="btn-sm danger" onclick="confirmClearAll()">حذف الكل</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="page" id="page-reports">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">أكبر ملف</div>
+          <div class="stat-value" id="biggestFile" style="font-size:1.1rem;margin-top:4px">-</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">أحدث ملف</div>
+          <div class="stat-value" id="newestFile" style="font-size:1.1rem;margin-top:4px">-</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-label">متوسط الحجم</div>
+          <div class="stat-value" id="avgSize">0 KB</div>
+        </div>
+        <div class="stat-card yellow">
+          <div class="stat-label">الأنواع المختلفة</div>
+          <div class="stat-value" id="uniqueTypes">0</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>📊 تفاصيل كاملة</h2></div>
+        <div style="padding:1.5rem">
+          <div id="reportDetails"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const FILES_KEY = '7oseeeFile_files';
+const PASS = 'admin123';
+let sortDir = 'desc';
+
+function getFiles() { try { return JSON.parse(localStorage.getItem(FILES_KEY)) || []; } catch { return []; } }
+function saveFiles(f) { localStorage.setItem(FILES_KEY, JSON.stringify(f)); }
+function formatSize(b) {
+  if(b<1024)return b+'B';
+  if(b<1048576)return(b/1024).toFixed(1)+'KB';
+  if(b<1073741824)return(b/1048576).toFixed(1)+'MB';
+  return(b/1073741824).toFixed(2)+'GB';
+}
+function formatDate(ts) { return new Date(ts).toLocaleDateString('ar-SA',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
+function getExt(n) { return n.split('.').pop().toUpperCase().slice(0,5); }
+function getType(mime) {
+  if(!mime)return 'غير محدد';
+  if(mime.startsWith('image'))return '🖼️ صورة';
+  if(mime.startsWith('video'))return '🎥 فيديو';
+  if(mime.startsWith('audio'))return '🎵 صوت';
+  if(mime.includes('pdf'))return '📄 PDF';
+  if(mime.startsWith('text'))return '📝 نص';
+  if(mime.includes('zip')||mime.includes('rar')||mime.includes('7z'))return '📦 مضغوط';
+  return '📎 أخرى';
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show';
+  setTimeout(() => t.className = 'toast', 3000);
+}
+function doLogin() {
+  const u = document.getElementById('loginUser').value;
+  const p = document.getElementById('loginPass').value;
+  if(u==='admin' && p===PASS) {
+    document.getElementById('loginScreen').style.display='none';
+    refreshData();
+  } else {
+    document.getElementById('loginErr').style.display='block';
+    setTimeout(()=>document.getElementById('loginErr').style.display='none',3000);
+  }
+}
+function doLogout() {
+  if(confirm('تأكيد الخروج من لوحة التحكم؟')) {
+    document.getElementById('loginScreen').style.display='flex';
+    document.getElementById('loginPass').value='';
+  }
+}
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  const titles = {dashboard:'📊 الإحصائيات العامة',files:'📁 إدارة الملفات',upload:'⬆️ رفع ملف',settings:'⚙️ الإعدادات',reports:'📈 التقارير'};
+  document.getElementById('pageTitle').textContent = titles[name]||name;
+  event.currentTarget?.classList.add('active');
+  if(name==='dashboard')renderDashboard();
+  if(name==='files')renderFilesTable();
+  if(name==='reports')renderReports();
+}
+function refreshData() { renderDashboard(); renderFilesTable(); updateBadge(); }
+function updateBadge() { document.getElementById('filesBadge').textContent = getFiles().length; }
+
+function renderDashboard() {
+  const files = getFiles();
+  document.getElementById('totalFiles').textContent = files.length;
+  const total = files.reduce((a,f)=>a+f.size,0);
+  document.getElementById('totalSize').textContent = formatSize(total);
+  document.getElementById('totalDownloads').textContent = '∞';
+  const today = new Date().toDateString();
+  const todayCount = files.filter(f=>new Date(f.date).toDateString()===today).length;
+  document.getElementById('todayFiles').textContent = todayCount;
+  updateBadge();
+
+  // Type chart
+  const typeCounts = {};
+  files.forEach(f => {
+    const t = f.type ? f.type.split('/')[0] : 'other';
+    typeCounts[t] = (typeCounts[t]||0) + 1;
+  });
+  const typeLabels = {image:'صور',video:'فيديو',audio:'صوت',application:'تطبيق',text:'نص',other:'أخرى'};
+  const max = Math.max(1,...Object.values(typeCounts));
+  document.getElementById('typeChart').innerHTML = Object.entries(typeCounts).map(([k,v])=>`
+    <div class="bar-row">
+      <div class="bar-label">${typeLabels[k]||k}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/max*100)}%">${v}</div></div>
+    </div>
+  `).join('') || '<p style="color:var(--text2);font-size:0.85rem">لا توجد بيانات بعد</p>';
+
+  // Size chart
+  const sizeBuckets = {'< 1KB':0,'1–100KB':0,'100KB–1MB':0,'> 1MB':0};
+  files.forEach(f=>{
+    if(f.size<1024)sizeBuckets['< 1KB']++;
+    else if(f.size<102400)sizeBuckets['1–100KB']++;
+    else if(f.size<1048576)sizeBuckets['100KB–1MB']++;
+    else sizeBuckets['> 1MB']++;
+  });
+  const smax = Math.max(1,...Object.values(sizeBuckets));
+  document.getElementById('sizeChart').innerHTML = Object.entries(sizeBuckets).map(([k,v])=>`
+    <div class="bar-row">
+      <div class="bar-label" style="width:75px">${k}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/smax*100)}%">${v}</div></div>
+    </div>
+  `).join('');
+
+  // Recent 5
+  const recent = files.slice().sort((a,b)=>b.date-a.date).slice(0,5);
+  document.getElementById('dashRecentTbl').innerHTML = recent.length ? recent.map(f=>`
+    <tr>
+      <td><span class="file-ext-badge">${getExt(f.name)}</span> ${f.name}</td>
+      <td>${getType(f.type)}</td>
+      <td>${formatSize(f.size)}</td>
+      <td>${formatDate(f.date)}</td>
+      <td>
+        <button class="action-btn dl" onclick="dlFile('${f.id}')">⬇️</button>
+        <button class="action-btn" onclick="delFile('${f.id}')">🗑️</button>
+      </td>
+    </tr>
+  `).join('') : '<tr><td colspan="5" class="empty"><div class="big">📭</div>لا توجد ملفات</td></tr>';
+}
+
+function renderFilesTable() {
+  const search = document.getElementById('searchInput')?.value.toLowerCase()||'';
+  const filter = document.getElementById('filterType')?.value||'';
+  let files = getFiles();
+  if(search) files = files.filter(f=>f.name.toLowerCase().includes(search));
+  if(filter) files = files.filter(f=>f.type&&f.type.startsWith(filter));
+  files.sort((a,b) => sortDir==='desc' ? b.date-a.date : a.date-b.date);
+  document.getElementById('filesCount').textContent = `${files.length} ملف`;
+  document.getElementById('filesTableBody').innerHTML = files.length ? files.map((f,i)=>`
+    <tr>
+      <td style="color:var(--text2);font-size:0.8rem">${i+1}</td>
+      <td><span class="file-ext-badge">${getExt(f.name)}</span> ${f.name}</td>
+      <td><span class="badge purple">${getType(f.type)}</span></td>
+      <td>${formatSize(f.size)}</td>
+      <td style="color:var(--text2);font-size:0.8rem">${formatDate(f.date)}</td>
+      <td><code style="font-size:0.7rem;color:var(--text2)">${f.id}</code></td>
+      <td>
+        <button class="action-btn dl" onclick="dlFile('${f.id}')" title="تحميل">⬇️</button>
+        <button class="action-btn" onclick="delFile('${f.id}')" title="حذف">🗑️</button>
+      </td>
+    </tr>
+  `).join('') : '<tr><td colspan="7"><div class="empty"><div class="big">🔍</div>لا توجد نتائج</div></td></tr>';
+}
+
+function renderReports() {
+  const files = getFiles();
+  if(!files.length) {
+    document.getElementById('reportDetails').innerHTML='<p style="color:var(--text2)">لا توجد بيانات</p>';
+    return;
+  }
+  const biggest = files.reduce((a,b)=>b.size>a.size?b:a, files[0]);
+  const newest = files.reduce((a,b)=>b.date>a.date?b:a, files[0]);
+  const avg = files.reduce((a,f)=>a+f.size,0)/files.length;
+  const types = new Set(files.map(f=>f.type||'unknown')).size;
+  document.getElementById('biggestFile').textContent = biggest.name.slice(0,20);
+  document.getElementById('newestFile').textContent = newest.name.slice(0,20);
+  document.getElementById('avgSize').textContent = formatSize(avg);
+  document.getElementById('uniqueTypes').textContent = types;
+  document.getElementById('reportDetails').innerHTML = `
+    <div style="display:grid;gap:12px">
+      <div style="background:var(--surface2);border-radius:10px;padding:1rem;display:flex;justify-content:space-between">
+        <span>📁 إجمالي الملفات</span><strong>${files.length}</strong>
+      </div>
+      <div style="background:var(--surface2);border-radius:10px;padding:1rem;display:flex;justify-content:space-between">
+        <span>💾 إجمالي الحجم</span><strong>${formatSize(files.reduce((a,f)=>a+f.size,0))}</strong>
+      </div>
+      <div style="background:var(--surface2);border-radius:10px;padding:1rem;display:flex;justify-content:space-between">
+        <span>📊 متوسط الحجم</span><strong>${formatSize(avg)}</strong>
+      </div>
+      <div style="background:var(--surface2);border-radius:10px;padding:1rem;display:flex;justify-content:space-between">
+        <span>🏆 أكبر ملف</span><strong>${biggest.name} (${formatSize(biggest.size)})</strong>
+      </div>
+      <div style="background:var(--surface2);border-radius:10px;padding:1rem;display:flex;justify-content:space-between">
+        <span>🆕 أحدث ملف</span><strong>${newest.name}</strong>
+      </div>
+    </div>
+  `;
+}
+
+function dlFile(id) {
+  const f = getFiles().find(x=>x.id===id);
+  if(!f)return;
+  const a = document.createElement('a');
+  a.href = f.data; a.download = f.name; a.click();
+  showToast('⬇️ بدأ تحميل: ' + f.name);
+}
+function delFile(id) {
+  if(!confirm('حذف هذا الملف نهائياً؟'))return;
+  saveFiles(getFiles().filter(f=>f.id!==id));
+  refreshData();
+  showToast('🗑️ تم حذف الملف');
+}
+function sortFiles() {
+  sortDir = sortDir==='desc'?'asc':'desc';
+  renderFilesTable();
+}
+function confirmClearAll() {
+  if(confirm('⚠️ تحذير: سيتم حذف جميع الملفات بشكل نهائي!\n\nهل أنت متأكد؟')) {
+    saveFiles([]);
+    refreshData();
+    showToast('🗑️ تم حذف جميع الملفات');
+  }
+}
+function toggleSetting(el) { el.classList.toggle('on'); showToast('✅ تم حفظ الإعداد'); }
+function changePassword() { showToast('⚙️ تغيير كلمة المرور - قريباً!'); }
+
+// Admin upload
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('adminFileInput');
+  const prog = document.getElementById('adminProgress');
+  const fill = document.getElementById('adminFill');
+  const pText = document.getElementById('adminPText');
+  const list = document.getElementById('adminFileList');
+  if(!inp)return;
+  inp.addEventListener('change', () => {
+    const file = inp.files[0];
+    if(!file)return;
+    prog.style.display='block'; fill.style.width='0%';
+    pText.textContent = 'جاري رفع: ' + file.name;
+    const r = new FileReader();
+    r.onprogress = e => {
+      if(e.lengthComputable){
+        const p = Math.round(e.loaded/e.total*100);
+        fill.style.width=p+'%';
+        pText.textContent='رفع... '+p+'%';
+      }
+    };
+    r.onload = e => {
+      fill.style.width='100%';
+      pText.textContent='✅ تم بنجاح!';
+      const files = getFiles();
+      files.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:file.name,size:file.size,type:file.type,date:Date.now(),data:e.target.result});
+      saveFiles(files);
+      refreshData();
+      showToast('✅ تم رفع ' + file.name);
+      list.innerHTML=`<div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:10px;padding:12px 16px;font-size:0.85rem">✅ <strong>${file.name}</strong> — ${formatSize(file.size)}</div>`;
+      setTimeout(()=>{prog.style.display='none';fill.style.width='0%';},2500);
+    };
+    r.readAsDataURL(file);
+  });
+});
+</script>
+</body>
+</html>

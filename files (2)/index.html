@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>7oseeeFile - رفع ملفاتك بحرية</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --accent: #7c3aed;
+    --accent2: #a78bfa;
+    --text: #f0f0ff;
+    --text2: #9090aa;
+    --border: rgba(120,120,200,0.15);
+    --success: #10b981;
+    --danger: #ef4444;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Cairo', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; width: 100%; z-index: 100;
+    background: rgba(10,10,15,0.85); backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem; height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo { font-family: 'Space Mono', monospace; font-size: 1.2rem; color: var(--accent2); letter-spacing: -1px; }
+  .logo span { color: var(--text); }
+  .nav-links { display: flex; gap: 2rem; list-style: none; }
+  .nav-links a { color: var(--text2); text-decoration: none; font-size: 0.9rem; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--accent2); }
+  .nav-btn { background: var(--accent); color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-family: 'Cairo', sans-serif; font-size: 0.9rem; transition: opacity 0.2s; }
+  .nav-btn:hover { opacity: 0.85; }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 80px 2rem 4rem; text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%);
+    top: 50%; left: 50%; transform: translate(-50%,-50%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(124,58,237,0.15); border: 1px solid rgba(124,58,237,0.3);
+    color: var(--accent2); padding: 6px 16px; border-radius: 100px;
+    font-size: 0.85rem; margin-bottom: 2rem; letter-spacing: 0.5px;
+  }
+  .hero-badge::before { content: '●'; font-size: 0.5rem; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  h1 { font-size: clamp(2.5rem, 7vw, 5rem); font-weight: 900; line-height: 1.1; margin-bottom: 1.5rem; }
+  h1 .grad { background: linear-gradient(135deg, #a78bfa, #7c3aed, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .hero-sub { color: var(--text2); font-size: 1.15rem; max-width: 520px; line-height: 1.7; margin-bottom: 3rem; }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    background: var(--surface); border: 2px dashed rgba(124,58,237,0.4);
+    border-radius: 20px; padding: 3rem 2rem;
+    width: 100%; max-width: 560px; cursor: pointer;
+    transition: all 0.3s; position: relative; overflow: hidden;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent); background: rgba(124,58,237,0.05);
+    transform: translateY(-2px);
+  }
+  .upload-icon { font-size: 3rem; margin-bottom: 1rem; }
+  .upload-zone h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+  .upload-zone p { color: var(--text2); font-size: 0.85rem; }
+  .upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .upload-progress { display: none; margin-top: 1.5rem; }
+  .progress-bar { background: var(--surface2); height: 6px; border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); width: 0%; transition: width 0.3s; border-radius: 3px; }
+
+  /* STATS */
+  .stats { display: flex; gap: 3rem; margin: 4rem 0; flex-wrap: wrap; justify-content: center; }
+  .stat { text-align: center; }
+  .stat-num { font-size: 2rem; font-weight: 900; color: var(--accent2); font-family: 'Space Mono', monospace; }
+  .stat-label { color: var(--text2); font-size: 0.85rem; margin-top: 4px; }
+
+  /* FEATURES */
+  .features { padding: 6rem 2rem; max-width: 1100px; margin: 0 auto; }
+  .section-title { text-align: center; font-size: 2rem; font-weight: 700; margin-bottom: 0.75rem; }
+  .section-sub { text-align: center; color: var(--text2); margin-bottom: 3rem; }
+  .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+  .feature-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.75rem;
+    transition: all 0.3s; position: relative; overflow: hidden;
+  }
+  .feature-card:hover { border-color: rgba(124,58,237,0.4); transform: translateY(-4px); }
+  .feature-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .feature-card:hover::before { opacity: 1; }
+  .feature-icon { font-size: 2rem; margin-bottom: 1rem; }
+  .feature-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; }
+  .feature-card p { color: var(--text2); font-size: 0.875rem; line-height: 1.6; }
+
+  /* HOW IT WORKS */
+  .how { padding: 5rem 2rem; background: var(--surface); }
+  .how-inner { max-width: 900px; margin: 0 auto; }
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 2rem; margin-top: 3rem; }
+  .step { text-align: center; }
+  .step-num { width: 52px; height: 52px; background: rgba(124,58,237,0.2); border: 1px solid rgba(124,58,237,0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Space Mono',monospace; font-size: 1.1rem; color: var(--accent2); margin: 0 auto 1rem; font-weight: 700; }
+  .step h3 { font-size: 1rem; margin-bottom: 0.4rem; }
+  .step p { color: var(--text2); font-size: 0.85rem; }
+
+  /* RECENT FILES */
+  .recent { padding: 5rem 2rem; max-width: 1100px; margin: 0 auto; }
+  .file-table { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .file-table-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; padding: 1rem 1.5rem; background: var(--surface2); border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--text2); font-weight: 600; }
+  .file-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); align-items: center; transition: background 0.2s; }
+  .file-row:last-child { border-bottom: none; }
+  .file-row:hover { background: rgba(124,58,237,0.05); }
+  .file-name { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; }
+  .file-ext { background: rgba(124,58,237,0.2); color: var(--accent2); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-family: 'Space Mono',monospace; font-weight: 700; }
+  .file-size, .file-date { color: var(--text2); font-size: 0.85rem; }
+  .file-dl { color: var(--accent2); font-size: 0.85rem; text-decoration: none; cursor: pointer; }
+  .file-dl:hover { color: white; }
+
+  /* FOOTER */
+  footer { background: var(--surface); border-top: 1px solid var(--border); padding: 3rem 2rem; text-align: center; }
+  footer .footer-logo { font-family: 'Space Mono',monospace; font-size: 1.5rem; color: var(--accent2); margin-bottom: 1rem; }
+  footer p { color: var(--text2); font-size: 0.85rem; }
+  footer .footer-links { display: flex; gap: 1.5rem; justify-content: center; margin: 1.5rem 0; }
+  footer .footer-links a { color: var(--text2); text-decoration: none; font-size: 0.875rem; transition: color 0.2s; }
+  footer .footer-links a:hover { color: var(--accent2); }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--surface2); border: 1px solid var(--border); padding: 1rem 1.5rem; border-radius: 12px; font-size: 0.9rem; z-index: 9999; transform: translateY(100px); opacity: 0; transition: all 0.4s; max-width: 320px; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: rgba(16,185,129,0.4); }
+
+  .btn-primary { background: var(--accent); color: white; border: none; padding: 14px 32px; border-radius: 12px; cursor: pointer; font-family: 'Cairo',sans-serif; font-size: 1rem; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+  .btn-primary:hover { background: #6d28d9; transform: translateY(-1px); }
+  .btn-outline { background: transparent; color: var(--accent2); border: 1px solid rgba(124,58,237,0.4); padding: 14px 32px; border-radius: 12px; cursor: pointer; font-family: 'Cairo',sans-serif; font-size: 1rem; transition: all 0.2s; }
+  .btn-outline:hover { background: rgba(124,58,237,0.1); }
+  .hero-btns { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+
+  @media(max-width:600px){
+    .nav-links{display:none}
+    .file-table-header,.file-row{grid-template-columns:2fr 1fr 1fr}
+    .file-date{display:none}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">7oseee<span>File</span></div>
+  <ul class="nav-links">
+    <li><a href="#features">المميزات</a></li>
+    <li><a href="#how">كيف يعمل</a></li>
+    <li><a href="#recent">الملفات</a></li>
+  </ul>
+  <button class="nav-btn" onclick="window.location.href='admin.html'">🔐 لوحة التحكم</button>
+</nav>
+
+<section class="hero">
+  <div class="hero-badge">✨ مجاني 100% بدون تسجيل</div>
+  <h1>ارفع ملفاتك<br><span class="grad">بحرية تامة</span></h1>
+  <p class="hero-sub">منصة رفع ملفات سريعة وآمنة. شارك ملفاتك مع أي أحد في ثوانٍ، بدون تسجيل وبدون حدود.</p>
+
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" multiple id="fileInput">
+    <div class="upload-icon">☁️</div>
+    <h3>اسحب ملفاتك هنا أو اضغط للاختيار</h3>
+    <p>يدعم جميع أنواع الملفات • الحد الأقصى 2GB لكل ملف</p>
+    <div class="upload-progress" id="uploadProgress">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <p style="margin-top:8px;font-size:0.8rem;color:var(--text2)" id="progressText">جاري الرفع...</p>
+    </div>
+  </div>
+
+  <div class="hero-btns" style="margin-top:1.5rem">
+    <button class="btn-primary" onclick="document.getElementById('fileInput').click()">
+      ⬆️ ارفع ملف الآن
+    </button>
+    <button class="btn-outline" onclick="document.getElementById('recent').scrollIntoView({behavior:'smooth'})">
+      📂 تصفح الملفات
+    </button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-num" id="countStat">0</div><div class="stat-label">ملف مرفوع</div></div>
+    <div class="stat"><div class="stat-num">2GB</div><div class="stat-label">حد الرفع</div></div>
+    <div class="stat"><div class="stat-num">∞</div><div class="stat-label">تحميلات</div></div>
+    <div class="stat"><div class="stat-num">100%</div><div class="stat-label">مجاني</div></div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <h2 class="section-title">ليش تختار 7oseeeFile؟</h2>
+  <p class="section-sub">كل اللي تحتاجه في مكان واحد</p>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <h3>رفع فوري</h3>
+      <p>خوادم سريعة تضمن رفع ملفاتك في أسرع وقت ممكن مع واجهة سلسة</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔗</div>
+      <h3>رابط مباشر</h3>
+      <p>احصل على رابط فوري لمشاركة ملفاتك مع أي شخص في أي مكان</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔒</div>
+      <h3>حماية بكلمة سر</h3>
+      <p>اختياري — حمي ملفاتك بكلمة سر حتى لا يصل إليها غيرك</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📦</div>
+      <h3>جميع الأنواع</h3>
+      <p>ارفع أي نوع ملف: صور، فيديو، مستندات، مضغوطات، وأكثر</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">👁️</div>
+      <h3>معاينة مباشرة</h3>
+      <p>صور وملفات PDF تُعرض مباشرة بدون تحميل</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🌍</div>
+      <h3>بدون حساب</h3>
+      <p>ما تحتاج تسجيل أو بريد إلكتروني. ارفع مباشرة وشارك</p>
+    </div>
+  </div>
+</section>
+
+<section class="how" id="how">
+  <div class="how-inner">
+    <h2 class="section-title">كيف يعمل؟</h2>
+    <p class="section-sub">ثلاث خطوات بسيطة</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <h3>اختر الملف</h3>
+        <p>اسحب ملفاتك أو اضغط لاختيارها من جهازك</p>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <h3>ارفع في ثوانٍ</h3>
+        <p>يتم الرفع تلقائياً بسرعة عالية</p>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <h3>شارك الرابط</h3>
+        <p>انسخ الرابط وشاركه مع من تريد فوراً</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="recent" id="recent">
+  <h2 class="section-title">آخر الملفات المرفوعة</h2>
+  <p class="section-sub">الملفات العامة المتاحة للجميع</p>
+  <div class="file-table" id="fileTable">
+    <div class="file-table-header">
+      <div>اسم الملف</div>
+      <div>الحجم</div>
+      <div>التاريخ</div>
+      <div>تحميل</div>
+    </div>
+    <div id="fileList"></div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">7oseeeFile</div>
+  <div class="footer-links">
+    <a href="#">الرئيسية</a>
+    <a href="#">سياسة الخصوصية</a>
+    <a href="#">الشروط</a>
+    <a href="admin.html">الإدارة</a>
+  </div>
+  <p>صُنع بـ ❤️ | جميع الحقوق محفوظة © 2025 7oseeeFile</p>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const FILES_KEY = '7oseeeFile_files';
+
+function getFiles() {
+  try { return JSON.parse(localStorage.getItem(FILES_KEY)) || []; } catch { return []; }
+}
+function saveFiles(files) {
+  localStorage.setItem(FILES_KEY, JSON.stringify(files));
+}
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 3500);
+}
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+  if (bytes < 1073741824) return (bytes/1048576).toFixed(1) + ' MB';
+  return (bytes/1073741824).toFixed(2) + ' GB';
+}
+function formatDate(ts) {
+  return new Date(ts).toLocaleDateString('ar-SA', {year:'numeric',month:'short',day:'numeric'});
+}
+function getExt(name) {
+  return name.split('.').pop().toUpperCase().slice(0,4);
+}
+function renderFiles() {
+  const files = getFiles();
+  document.getElementById('countStat').textContent = files.length;
+  const list = document.getElementById('fileList');
+  if (!files.length) {
+    list.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text2)">لا توجد ملفات مرفوعة بعد 📭</div>';
+    return;
+  }
+  list.innerHTML = files.slice().reverse().slice(0,10).map(f => `
+    <div class="file-row">
+      <div class="file-name"><span class="file-ext">${getExt(f.name)}</span>${f.name}</div>
+      <div class="file-size">${formatSize(f.size)}</div>
+      <div class="file-date">${formatDate(f.date)}</div>
+      <div><a class="file-dl" onclick="downloadFile('${f.id}')">⬇️ تحميل</a></div>
+    </div>
+  `).join('');
+}
+
+function downloadFile(id) {
+  const files = getFiles();
+  const f = files.find(x => x.id === id);
+  if (!f) return;
+  const link = document.createElement('a');
+  link.href = f.data;
+  link.download = f.name;
+  link.click();
+}
+
+// Upload logic
+const zone = document.getElementById('uploadZone');
+const input = document.getElementById('fileInput');
+const progress = document.getElementById('uploadProgress');
+const fill = document.getElementById('progressFill');
+const pText = document.getElementById('progressText');
+
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('drag-over');
+  handleFiles(e.dataTransfer.files);
+});
+input.addEventListener('change', () => handleFiles(input.files));
+
+function handleFiles(fileList) {
+  if (!fileList.length) return;
+  const file = fileList[0];
+  if (file.size > 2 * 1024 * 1024 * 1024) {
+    showToast('❌ الملف أكبر من 2GB!', 'danger');
+    return;
+  }
+  progress.style.display = 'block';
+  fill.style.width = '0%';
+  pText.textContent = `جاري رفع: ${file.name}`;
+  const reader = new FileReader();
+  reader.onprogress = e => {
+    if (e.lengthComputable) {
+      const pct = Math.round(e.loaded / e.total * 100);
+      fill.style.width = pct + '%';
+      pText.textContent = `جاري الرفع... ${pct}%`;
+    }
+  };
+  reader.onload = e => {
+    fill.style.width = '100%';
+    pText.textContent = '✅ تم الرفع بنجاح!';
+    const files = getFiles();
+    const newFile = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      name: file.name, size: file.size,
+      type: file.type, date: Date.now(),
+      data: e.target.result
+    };
+    files.push(newFile);
+    saveFiles(files);
+    renderFiles();
+    showToast('✅ تم رفع ' + file.name + ' بنجاح!', 'success');
+    setTimeout(() => { progress.style.display = 'none'; fill.style.width = '0%'; }, 2500);
+    // Copy link to clipboard
+    const fakeLink = window.location.origin + '/f/' + newFile.id;
+    navigator.clipboard?.writeText(fakeLink).catch(()=>{});
+  };
+  reader.readAsDataURL(file);
+}
+
+renderFiles();
+</script>
+</body>
+</html>
