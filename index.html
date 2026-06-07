@@ -1,286 +1,294 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>لوحة التحكم | 7oseeeFile</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tiscord</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- LOGIN SCREEN -->
-  <div class="login-screen" id="loginScreen">
-    <div class="login-box">
-      <div class="login-logo">7oseeeFile</div>
-      <p class="login-sub">لوحة تحكم المشرف</p>
-      <div class="input-group">
+<!-- ═══════════════ TOAST CONTAINER ═══════════════ -->
+<div id="toastContainer"></div>
+
+<!-- ═══════════════════════════════════════════════
+     AUTH PAGE
+═══════════════════════════════════════════════ -->
+<div id="authPage">
+  <div class="auth-wrap">
+
+    <div class="auth-logo">
+      <div class="logo-mark">🎮</div>
+      <h1>Tiscord</h1>
+      <p>تواصل مع أصدقائك بطريقة جديدة</p>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">تسجيل الدخول</button>
+      <button class="auth-tab"        onclick="switchAuthTab('register')">إنشاء حساب</button>
+    </div>
+
+    <!-- Login Form -->
+    <div id="loginForm">
+      <div class="form-group">
         <label>اسم المستخدم</label>
-        <input type="text" id="loginUser" placeholder="admin" value="admin" />
+        <input type="text" id="loginUser" placeholder="أدخل اسم المستخدم">
       </div>
-      <div class="input-group">
+      <div class="form-group">
         <label>كلمة المرور</label>
-        <input type="password" id="loginPass" placeholder="••••••••" />
+        <input type="password" id="loginPass" placeholder="أدخل كلمة المرور">
       </div>
-      <button class="login-btn" id="loginBtn">🔐 دخول</button>
-      <p class="login-err hidden" id="loginErr">❌ بيانات خاطئة! حاول مرة ثانية</p>
+      <div class="auth-error" id="loginError"></div>
+      <button class="btn-primary" onclick="doLogin()">🚀 تسجيل الدخول</button>
+    </div>
+
+    <!-- Register Form -->
+    <div id="registerForm" class="hidden">
+      <div class="form-group">
+        <label>اسم المستخدم</label>
+        <input type="text" id="regUser" placeholder="اختر اسم مستخدم فريد">
+      </div>
+      <div class="form-group">
+        <label>الاسم المعروض</label>
+        <input type="text" id="regDisplay" placeholder="الاسم اللي يشوفه الناس">
+      </div>
+      <div class="form-group">
+        <label>كلمة المرور</label>
+        <input type="password" id="regPass" placeholder="كلمة مرور قوية">
+      </div>
+      <div class="auth-error" id="regError"></div>
+      <button class="btn-primary" onclick="doRegister()">✨ إنشاء الحساب</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MAIN APP
+═══════════════════════════════════════════════ -->
+<div id="app" class="hidden">
+
+  <!-- ── Server Rail ── -->
+  <div class="server-rail">
+    <div class="s-icon active" id="homeBtn" title="الرئيسية" onclick="openHome()">
+      🏠<div class="server-pip"></div>
+    </div>
+    <div class="rail-sep"></div>
+    <div id="railServers"></div>
+    <div class="rail-sep"></div>
+    <div class="s-icon add" title="إنشاء سيرفر" onclick="openModal('createServerModal')">＋</div>
+  </div>
+
+  <!-- ── Channel Panel ── -->
+  <div class="channel-panel">
+    <div class="srv-header" id="srvHeader">
+      <span>🏠 الرئيسية</span>
+    </div>
+    <div class="ch-scroll" id="chScroll"></div>
+    <div class="user-bar">
+      <div class="u-avatar" id="barAvatar" style="background:var(--accent)">
+        <span id="barAvLetter">U</span>
+        <div class="u-status online"></div>
+      </div>
+      <div class="u-info">
+        <div class="u-name" id="barName">مستخدم</div>
+        <div class="u-tag"  id="barTag">#0000</div>
+      </div>
+      <button class="icon-btn" title="الإعدادات" onclick="openSettings()">⚙️</button>
+      <button class="icon-btn" title="تسجيل الخروج" onclick="doLogout()">🚪</button>
     </div>
   </div>
 
-  <!-- LAYOUT -->
-  <div class="admin-layout" id="adminLayout">
+  <!-- ── Content Area ── -->
+  <div class="content-area">
 
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
-      <div class="sidebar-logo">
-        <div class="brand">7oseeeFile</div>
-        <div class="brand-sub">لوحة التحكم</div>
+    <!-- Home Screen -->
+    <div id="homeScreen" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:40px;text-align:center">
+      <div class="home-logo">🎮</div>
+      <h1 class="home-title">أهلاً في Tiscord!</h1>
+      <p class="home-sub">ابدأ بإنشاء سيرفر جديد أو انضم لسيرفر موجود</p>
+      <div class="home-actions">
+        <button class="btn btn-accent" onclick="openModal('createServerModal')">➕ إنشاء سيرفر</button>
+        <button class="btn btn-ghost"  onclick="openModal('joinServerModal')">🔗 الانضمام بكود</button>
       </div>
+    </div>
 
-      <nav class="sidebar-nav">
-        <p class="nav-section">الرئيسية</p>
-        <a class="nav-item active" data-page="dashboard">
-          <span class="nav-icon">📊</span> الإحصائيات
-        </a>
-
-        <p class="nav-section">الملفات</p>
-        <a class="nav-item" data-page="files">
-          <span class="nav-icon">📁</span> إدارة الملفات
-          <span class="nav-badge" id="filesBadge">0</span>
-        </a>
-        <a class="nav-item" data-page="upload">
-          <span class="nav-icon">⬆️</span> رفع ملف
-        </a>
-
-        <p class="nav-section">النظام</p>
-        <a class="nav-item" data-page="settings">
-          <span class="nav-icon">⚙️</span> الإعدادات
-        </a>
-        <a class="nav-item" data-page="reports">
-          <span class="nav-icon">📈</span> التقارير
-        </a>
-        <a class="nav-item" id="goSite">
-          <span class="nav-icon">🌐</span> الموقع الرئيسي
-        </a>
-      </nav>
-
-      <div class="sidebar-footer">
-        <div class="admin-info">
-          <div class="admin-avatar">7H</div>
-          <div>
-            <div class="admin-name">7oseee Admin</div>
-            <div class="admin-role">مشرف النظام</div>
-          </div>
-          <button class="logout-btn" id="logoutBtn" title="خروج">🚪</button>
+    <!-- Chat Screen -->
+    <div id="chatScreen" class="hidden" style="flex:1;display:flex;flex-direction:column;min-height:0">
+      <div class="chat-header">
+        <span class="ch-sym-big" id="chatSym">#</span>
+        <span class="ch-name" id="chatName">عام</span>
+        <span class="ch-desc" id="chatDesc"></span>
+        <div class="header-actions">
+          <button class="icon-btn" title="الأعضاء"  onclick="showMembers=!showMembers;renderMembers(activeServer)">👥</button>
+          <button class="icon-btn" title="بحث"       onclick="toast('🔍 البحث قريباً!')">🔍</button>
         </div>
       </div>
-    </aside>
-
-    <!-- MAIN -->
-    <main class="admin-main">
-
-      <!-- TOPBAR -->
-      <div class="topbar">
-        <h1 id="pageTitle">📊 الإحصائيات العامة</h1>
-        <div class="topbar-actions">
-          <button class="btn-sm outline" id="refreshBtn">🔄 تحديث</button>
-          <button class="btn-sm danger" id="clearAllBtn">🗑️ حذف الكل</button>
+      <div class="msgs-wrap" id="msgsWrap"></div>
+      <div class="chat-input-wrap">
+        <div class="chat-input-box">
+          <span class="emoji-btn">😊</span>
+          <input class="chat-input" id="chatInputEl" placeholder="أرسل رسالة..." onkeydown="handleChatKey(event)">
+          <button class="send-btn" onclick="sendMsg()">➤</button>
         </div>
       </div>
+    </div>
 
-      <div class="admin-content">
+    <!-- Admin Screen -->
+    <div id="adminScreen" class="hidden" style="flex:1;display:flex;overflow:hidden">
+      <div class="admin-nav-panel">
+        <div class="admin-nav-label">لوحة الإدارة</div>
+        <div class="a-nav-item active" data-tab="overview"  onclick="switchAdminTab('overview')"> <span class="a-icon">📊</span> نظرة عامة</div>
+        <div class="a-nav-item"        data-tab="members"   onclick="switchAdminTab('members')">  <span class="a-icon">👥</span> الأعضاء</div>
+        <div class="a-nav-item"        data-tab="roles"     onclick="switchAdminTab('roles')">    <span class="a-icon">🎖️</span> الرتب</div>
+        <div class="a-nav-item"        data-tab="channels"  onclick="switchAdminTab('channels')"> <span class="a-icon">💬</span> القنوات</div>
+        <div class="a-nav-item"        data-tab="webhooks"  onclick="switchAdminTab('webhooks')"> <span class="a-icon">🔗</span> الويبهوك</div>
+        <div class="a-nav-item"        data-tab="logs"      onclick="switchAdminTab('logs')">     <span class="a-icon">📋</span> السجلات</div>
+        <div class="a-nav-item"        data-tab="bans"      onclick="switchAdminTab('bans')">     <span class="a-icon">🔨</span> المحظورون</div>
+        <div class="a-nav-item"        data-tab="invites"   onclick="switchAdminTab('invites')">  <span class="a-icon">📨</span> الدعوات</div>
+        <div class="a-nav-item"        data-tab="settings"  onclick="switchAdminTab('settings')"> <span class="a-icon">⚙️</span> إعدادات</div>
+      </div>
+      <div class="admin-body" id="adminBody"></div>
+    </div>
 
-        <!-- PAGE: DASHBOARD -->
-        <div class="page active" id="page-dashboard">
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-card-icon">📁</div>
-              <div class="stat-card-label">إجمالي الملفات</div>
-              <div class="stat-card-value" id="totalFiles">0</div>
-            </div>
-            <div class="stat-card green">
-              <div class="stat-card-icon">💾</div>
-              <div class="stat-card-label">المساحة المستخدمة</div>
-              <div class="stat-card-value" id="totalSize">0 MB</div>
-            </div>
-            <div class="stat-card blue">
-              <div class="stat-card-icon">📅</div>
-              <div class="stat-card-label">مرفوع اليوم</div>
-              <div class="stat-card-value" id="todayFiles">0</div>
-            </div>
-            <div class="stat-card yellow">
-              <div class="stat-card-icon">📊</div>
-              <div class="stat-card-label">أنواع مختلفة</div>
-              <div class="stat-card-value" id="uniqueTypes">0</div>
-            </div>
-          </div>
+  </div>
 
-          <div class="chart-grid">
-            <div class="chart-box">
-              <div class="chart-title">الملفات حسب النوع</div>
-              <div class="bar-chart" id="typeChart"></div>
-            </div>
-            <div class="chart-box">
-              <div class="chart-title">توزيع الأحجام</div>
-              <div class="bar-chart" id="sizeChart"></div>
-            </div>
-          </div>
+  <!-- ── Members Panel ── -->
+  <div class="members-panel" id="membersPanel"></div>
 
-          <div class="data-card">
-            <div class="data-card-header">
-              <h2>آخر الملفات المرفوعة</h2>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>الملف</th><th>النوع</th><th>الحجم</th><th>التاريخ</th><th>إجراء</th>
-                  </tr>
-                </thead>
-                <tbody id="dashRecentTbl"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+</div><!-- /#app -->
 
-        <!-- PAGE: FILES -->
-        <div class="page" id="page-files">
-          <div class="toolbar">
-            <input class="search-input" id="searchInput" placeholder="🔍 ابحث في الملفات..." />
-            <select class="filter-select" id="filterType">
-              <option value="">كل الأنواع</option>
-              <option value="image">صور</option>
-              <option value="video">فيديو</option>
-              <option value="application">تطبيقات/PDF</option>
-              <option value="text">نصوص</option>
-              <option value="audio">صوت</option>
-            </select>
-            <button class="btn-sm outline" id="sortBtn">↕️ ترتيب</button>
-          </div>
-          <div class="data-card">
-            <div class="data-card-header">
-              <h2>📁 جميع الملفات</h2>
-              <span class="files-count" id="filesCount"></span>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>#</th><th>اسم الملف</th><th>النوع</th><th>الحجم</th><th>التاريخ</th><th>المعرف</th><th>إجراءات</th>
-                  </tr>
-                </thead>
-                <tbody id="filesTableBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
 
-        <!-- PAGE: UPLOAD -->
-        <div class="page" id="page-upload">
-          <div class="data-card upload-card">
-            <div class="data-card-header"><h2>⬆️ رفع ملف جديد</h2></div>
-            <div class="upload-card-body">
-              <div class="admin-drop-zone" id="adminDrop">
-                <input type="file" multiple id="adminFileInput" class="file-input" />
-                <div class="upload-icon-fallback">📤</div>
-                <h3>اسحب ملفاتك أو اضغط</h3>
-                <p>يدعم جميع الأنواع • حد 2GB</p>
-              </div>
-              <div class="upload-progress hidden" id="adminProgress">
-                <div class="progress-bar">
-                  <div class="progress-fill" id="adminFill"></div>
-                </div>
-                <p class="progress-text" id="adminPText">جاري الرفع...</p>
-              </div>
-              <div id="adminFileResult"></div>
-            </div>
-          </div>
-        </div>
+<!-- ═══════════════════════════════════════════════
+     MODALS
+═══════════════════════════════════════════════ -->
 
-        <!-- PAGE: SETTINGS -->
-        <div class="page" id="page-settings">
-          <div class="data-card">
-            <div class="data-card-header"><h2>⚙️ إعدادات الموقع</h2></div>
-            <div class="settings-body">
+<!-- Create Server -->
+<div class="modal-overlay hidden" id="createServerModal">
+  <div class="modal">
+    <h2>🚀 إنشاء سيرفر جديد</h2>
+    <p class="m-sub">اعطِ سيرفرك اسمًا مميزًا</p>
+    <div class="form-group">
+      <label>اسم السيرفر</label>
+      <input type="text" id="newSrvName" placeholder="مثال: سيرفر الألعاب">
+    </div>
+    <div class="form-group">
+      <label>إيموجي</label>
+      <input type="text" id="newSrvEmoji" placeholder="🎮" maxlength="2" value="🎮">
+    </div>
+    <div class="form-group">
+      <label>وصف السيرفر</label>
+      <input type="text" id="newSrvDesc" placeholder="وصف قصير...">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost"  onclick="closeModal('createServerModal')">إلغاء</button>
+      <button class="btn btn-accent" onclick="createServer()">إنشاء ✨</button>
+    </div>
+  </div>
+</div>
 
-              <div class="setting-row">
-                <div class="setting-info">
-                  <h3>🌐 الموقع مفتوح للعامة</h3>
-                  <p>السماح للزوار برفع الملفات بدون تسجيل</p>
-                </div>
-                <div class="toggle on" id="tog1"></div>
-              </div>
+<!-- Join Server -->
+<div class="modal-overlay hidden" id="joinServerModal">
+  <div class="modal">
+    <h2>🔗 الانضمام لسيرفر</h2>
+    <p class="m-sub">أدخل كود الدعوة للانضمام</p>
+    <div class="form-group">
+      <label>كود الدعوة</label>
+      <input type="text" id="joinCode" placeholder="ABC123" style="direction:ltr;text-align:center;letter-spacing:3px;font-size:18px">
+    </div>
+    <div class="auth-error" id="joinError">❌ كود الدعوة غير صحيح</div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost"  onclick="closeModal('joinServerModal')">إلغاء</button>
+      <button class="btn btn-accent" onclick="joinServer()">انضمام 🚪</button>
+    </div>
+  </div>
+</div>
 
-              <div class="setting-row">
-                <div class="setting-info">
-                  <h3>🔒 كلمة سر للتحميل</h3>
-                  <p>طلب كلمة سر عند تحميل الملفات</p>
-                </div>
-                <div class="toggle" id="tog2"></div>
-              </div>
+<!-- Add Channel -->
+<div class="modal-overlay hidden" id="addChModal">
+  <div class="modal">
+    <h2>💬 إضافة قناة جديدة</h2>
+    <div class="form-group">
+      <label>نوع القناة</label>
+      <select id="addChType">
+        <option value="text">💬 نصية</option>
+        <option value="voice">🔊 صوتية</option>
+        <option value="announce">📢 إعلانات</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>اسم القناة</label>
+      <input type="text" id="addChName" placeholder="مثال: عام">
+    </div>
+    <div class="form-group">
+      <label>الفئة</label>
+      <input type="text" id="addChCat" placeholder="مثال: القنوات العامة">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost"  onclick="closeModal('addChModal')">إلغاء</button>
+      <button class="btn btn-accent" onclick="addChannel()">إنشاء ✨</button>
+    </div>
+  </div>
+</div>
 
-              <div class="setting-row">
-                <div class="setting-info">
-                  <h3>📧 إشعارات البريد</h3>
-                  <p>إرسال إشعار عند رفع ملف جديد</p>
-                </div>
-                <div class="toggle" id="tog3"></div>
-              </div>
+<!-- Settings -->
+<div class="modal-overlay hidden" id="settingsModal">
+  <div class="modal" style="width:500px">
+    <h2>⚙️ إعدادات الحساب</h2>
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="profile"       onclick="renderSettings('profile')">الملف الشخصي</button>
+      <button class="tab-btn"        data-tab="security"      onclick="renderSettings('security')">الأمان</button>
+      <button class="tab-btn"        data-tab="notifications" onclick="renderSettings('notifications')">الإشعارات</button>
+    </div>
+    <div id="settingsBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost"  onclick="closeModal('settingsModal')">إغلاق</button>
+      <button class="btn btn-accent" onclick="saveSettings()">💾 حفظ</button>
+    </div>
+  </div>
+</div>
 
-              <div class="setting-row">
-                <div class="setting-info">
-                  <h3>🗑️ الحذف التلقائي</h3>
-                  <p>حذف الملفات غير المستخدمة تلقائياً</p>
-                </div>
-                <div class="toggle on" id="tog4"></div>
-              </div>
+<!-- Create Account (Owner only) -->
+<div class="modal-overlay hidden" id="createAccountModal">
+  <div class="modal">
+    <h2>👤 إنشاء حساب جديد</h2>
+    <p class="m-sub">الأونر فقط يستطيع إنشاء حسابات مباشرة</p>
+    <div class="form-group">
+      <label>اسم المستخدم</label>
+      <input type="text" id="accUser" placeholder="اسم المستخدم الفريد">
+    </div>
+    <div class="form-group">
+      <label>الاسم المعروض</label>
+      <input type="text" id="accDisplay" placeholder="الاسم المعروض">
+    </div>
+    <div class="form-group">
+      <label>كلمة المرور</label>
+      <input type="password" id="accPass" placeholder="كلمة المرور">
+    </div>
+    <div class="form-group">
+      <label>الرتبة</label>
+      <select id="accRole">
+        <option value="user">عضو عادي</option>
+        <option value="helper">هيلبر</option>
+        <option value="super">سوبر أدمن</option>
+        <option value="head">هيد أدمن</option>
+        <option value="admin-mgr">أدمن مانجر</option>
+        <option value="manager">مانجر</option>
+        <option value="leader">ليدر</option>
+      </select>
+    </div>
+    <div class="auth-error" id="accError"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost"  onclick="closeModal('createAccountModal')">إلغاء</button>
+      <button class="btn btn-accent" onclick="createAccount()">إنشاء الحساب ✨</button>
+    </div>
+  </div>
+</div>
 
-              <div class="setting-row danger-row">
-                <div class="setting-info">
-                  <h3 class="danger-text">⚠️ حذف جميع الملفات</h3>
-                  <p>تحذير: هذا الإجراء لا يمكن التراجع عنه</p>
-                </div>
-                <button class="btn-sm danger" id="clearAllBtn2">حذف الكل</button>
-              </div>
+<!-- ═══════════════════════════════════════════════
+     SCRIPTS
+═══════════════════════════════════════════════ -->
+<script src="main.js"></script>
 
-            </div>
-          </div>
-        </div>
-
-        <!-- PAGE: REPORTS -->
-        <div class="page" id="page-reports">
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-card-label">أكبر ملف</div>
-              <div class="stat-card-value sm" id="biggestFile">—</div>
-            </div>
-            <div class="stat-card green">
-              <div class="stat-card-label">أحدث ملف</div>
-              <div class="stat-card-value sm" id="newestFile">—</div>
-            </div>
-            <div class="stat-card blue">
-              <div class="stat-card-label">متوسط الحجم</div>
-              <div class="stat-card-value" id="avgSize">0 KB</div>
-            </div>
-            <div class="stat-card yellow">
-              <div class="stat-card-label">أنواع مختلفة</div>
-              <div class="stat-card-value" id="uniqueTypes2">0</div>
-            </div>
-          </div>
-          <div class="data-card">
-            <div class="data-card-header"><h2>📋 تفاصيل كاملة</h2></div>
-            <div class="report-body" id="reportDetails"></div>
-          </div>
-        </div>
-
-      </div><!-- end admin-content -->
-    </main>
-  </div><!-- end admin-layout -->
-
-  <!-- TOAST -->
-  <div class="toast" id="toast"></div>
-
-  <script src="admin.js"></script>
 </body>
 </html>
