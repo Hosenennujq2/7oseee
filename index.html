@@ -8,14 +8,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Tiscord">
-  <link rel="manifest" href="manifest.json">
   <title>Tiscord</title>
-  <link rel="stylesheet" href="style.css">
-  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;900&family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
-</head>
+    <link rel="stylesheet" href="style.css">
 <body>
 
 <!-- ═══ SPLASH SCREEN ═══ -->
@@ -251,12 +248,12 @@
     <h2>🚀 إنشاء سيرفر جديد</h2>
     <p class="m-sub">اعطِ سيرفرك اسمًا مميزًا</p>
     <div class="srv-template-grid">
-      <div class="srv-template active" onclick="selectTemplate(this,'gaming')">🎮<br><small>ألعاب</small></div>
-      <div class="srv-template" onclick="selectTemplate(this,'study')">📚<br><small>دراسة</small></div>
-      <div class="srv-template" onclick="selectTemplate(this,'friends')">🤝<br><small>أصدقاء</small></div>
-      <div class="srv-template" onclick="selectTemplate(this,'art')">🎨<br><small>فن</small></div>
-      <div class="srv-template" onclick="selectTemplate(this,'music')">🎵<br><small>موسيقى</small></div>
-      <div class="srv-template" onclick="selectTemplate(this,'custom')">⚙️<br><small>مخصص</small></div>
+      <div class="srv-template active" onclick="selectTemplate(this,'gaming')" data-key="gaming">🎮<br><small>ألعاب</small></div>
+      <div class="srv-template" onclick="selectTemplate(this,'study')" data-key="study">📚<br><small>دراسة</small></div>
+      <div class="srv-template" onclick="selectTemplate(this,'friends')" data-key="friends">🤝<br><small>أصدقاء</small></div>
+      <div class="srv-template" onclick="selectTemplate(this,'art')" data-key="art">🎨<br><small>فن</small></div>
+      <div class="srv-template" onclick="selectTemplate(this,'music')" data-key="music">🎵<br><small>موسيقى</small></div>
+      <div class="srv-template" onclick="selectTemplate(this,'custom')" data-key="custom">⚙️<br><small>مخصص</small></div>
     </div>
     <div class="form-group">
       <label>اسم السيرفر</label>
@@ -525,7 +522,12 @@
   }
 </script>
 
-<script src="main.js"></script>
 
+
+<!-- ═══ VOICE SCREEN ═══ -->
+<div id="voiceScreen" class="hidden" style="display:none"></div>
+
+<!-- ═══ SCRIPT ═══ -->
+<script src="main.js"></script>
 </body>
 </html>
