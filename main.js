@@ -12,6 +12,7 @@ function loadDB(){
   if(!DB.logs)DB.logs=[];
   if(!DB.dms)DB.dms={};
   if(!DB.friendRequests)DB.friendRequests=[];
+  if(!DB.groups)DB.groups={};
   Object.values(DB.users).forEach(u=>{if(!u.friends)u.friends=[];if(u.customStatus===undefined)u.customStatus='';});
   saveDB();
 }
@@ -183,10 +184,23 @@ function openDMView(){
 function renderDMSidebar(){
   const u=DB.users[me.username];const friends=u.friends||[];
   const pending=getPendingCount();
+  if(!DB.groups)DB.groups={};
+  const myGroups=Object.entries(DB.groups).filter(([gid,g])=>g.members&&g.members.includes(me.username));
   let html=`<div class="ch-cat">التنقل</div>
     <div class="ch-item" onclick="openDMView()"><span class="ch-sym">👥</span> الأصدقاء</div>
     <div class="ch-item" onclick="openDMRequests()"><span class="ch-sym">📨</span> الطلبات ${pending>0?`<span class="ch-badge">${pending}</span>`:''}</div>
-    <div class="ch-cat">المحادثات</div>`;
+    <div class="ch-cat" style="display:flex;justify-content:space-between">
+      <span>القروبات</span>
+      <span style="cursor:pointer;color:var(--accent);font-size:16px" onclick="openCreateGroupModal()" title="قروب جديد">＋</span>
+    </div>
+    ${myGroups.map(([gid,g])=>`<div class="ch-item${activeDM==='grp:'+gid?' active':''}" onclick="openGroup('${gid}')">
+      <span class="ch-sym">${g.avatar||'👥'}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.name)}</div>
+        <div style="font-size:11px;color:var(--text-4)">${g.members.length} أعضاء</div>
+      </div>
+    </div>`).join('')}
+    <div class="ch-cat">المحادثات المباشرة</div>`;
   friends.forEach(fname=>{
     const fu=DB.users[fname];if(!fu)return;
     const dmId=getDMId(me.username,fname);
@@ -1545,4 +1559,332 @@ function joinServer(){
   document.getElementById('serverPreview')?.classList.add('hidden');
   addLog(sv.id,'انضمام للسيرفر',me.username);
   renderRail(); openServer(sv.id); toast('✅ أهلاً في '+sv.name+'!');
+}
+
+/* ═══════════════════════════════════════════════
+   GROUP DM SYSTEM
+═══════════════════════════════════════════════ */
+function openCreateGroupModal(){
+  const myUser=DB.users[me.username];const friends=myUser.friends||[];
+  const ov=document.createElement('div');ov.className='modal-overlay';ov.id='createGroupOv';
+  ov.innerHTML=`<div class="modal"><h2>👥 إنشاء مجموعة</h2>
+    <div class="form-group"><label>اسم المجموعة</label><input id="grpName" type="text" placeholder="مثال: قروب الأصدقاء"></div>
+    <div class="form-group"><label>اختر الأعضاء (من أصدقائك)</label>
+      <div id="grpFriendsList" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;background:var(--bg-input);border-radius:8px;padding:8px">
+        ${friends.length===0?'<p style="color:var(--text-4);text-align:center;padding:12px">لا يوجد أصدقاء</p>':
+        friends.map(f=>{const fu=DB.users[f];if(!fu)return '';return `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 8px;border-radius:6px;background:var(--bg-card)">
+          <input type="checkbox" value="${f}" class="grp-member-check">
+          <div style="width:28px;height:28px;border-radius:50%;background:${avatarColor(f)};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">${esc((fu.avatar||fu.display[0]).slice(0,2))}</div>
+          <span style="font-size:13px;font-weight:600">${esc(fu.display)}</span>
+          <span style="font-size:11px;color:var(--text-4)">${f}</span>
+        </label>`;}).join('')}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('createGroupOv').remove()">إغلاق</button>
+      <button class="btn btn-accent" onclick="createGroup()">إنشاء المجموعة 🚀</button>
+    </div>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  document.body.appendChild(ov);
+}
+
+function createGroup(){
+  const name=document.getElementById('grpName')?.value.trim();
+  if(!name){toast('❌ أدخل اسم المجموعة','err');return;}
+  const checked=[...document.querySelectorAll('.grp-member-check:checked')].map(c=>c.value);
+  if(checked.length===0){toast('❌ اختر عضو واحد على الأقل','err');return;}
+  const members=[me.username,...checked];
+  const gid='grp_'+uid();
+  if(!DB.groups)DB.groups={};
+  DB.groups[gid]={
+    id:gid,name,owner:me.username,
+    members,avatar:'👥',
+    createdAt:new Date().toISOString(),
+    messages:[],
+    systemMsgs:[{id:uid(),type:'system',text:'تم إنشاء المجموعة',time:new Date().toISOString()}]
+  };
+  // Notify added members
+  checked.forEach(uname=>{
+    if(!DB.users[uname].groupNotifs)DB.users[uname].groupNotifs=[];
+    DB.users[uname].groupNotifs.push({gid,from:me.username,time:new Date().toISOString()});
+  });
+  saveDB();
+  document.getElementById('createGroupOv')?.remove();
+  toast('✅ تم إنشاء '+name+'!');
+  openGroup(gid);
+  renderDMSidebar();
+}
+
+function openGroup(gid){
+  if(!DB.groups)DB.groups={};
+  const g=DB.groups[gid];if(!g)return;
+  activeDM='grp:'+gid;activeServer=null;activeChannel=null;
+  renderDMSidebar();showScreen('dmScreen');renderGroupChat(gid);
+}
+
+function renderGroupChat(gid){
+  const g=DB.groups[gid];if(!g)return;
+  const isOwner=g.owner===me.username;
+  const sc=document.getElementById('dmScreen');
+  sc.innerHTML=`<div style="display:flex;flex-direction:column;flex:1;min-height:0">
+    <div class="chat-header" style="direction:rtl">
+      <button class="mobile-back-btn" onclick="openDMView()">◀</button>
+      <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${g.avatar||'👥'}</div>
+      <div class="ch-header-info">
+        <span class="ch-name">${esc(g.name)}</span>
+        <span class="ch-desc">${g.members.length} أعضاء</span>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" onclick="showGroupInfo('${gid}')">👥</button>
+        ${isOwner?`<button class="icon-btn" onclick="openAddToGroup('${gid}')">➕</button>`:''}
+        ${isOwner?`<button class="icon-btn" onclick="editGroup('${gid}')">✏️</button>`:''}
+        <button class="icon-btn" onclick="leaveGroup('${gid}')" title="مغادرة">🚪</button>
+      </div>
+    </div>
+    <div class="msgs-wrap" id="grpMsgsWrap"><div class="msgs-inner" id="grpMsgsInner" style="direction:rtl"></div></div>
+    <div class="chat-input-wrap">
+      <div class="chat-input-box">
+        <button class="emoji-btn" onclick="toggleEmojiPicker()">😊</button>
+        <div class="emoji-picker hidden" id="emojiPicker"></div>
+        <textarea class="chat-input" id="grpInputEl" placeholder="رسالة في ${esc(g.name)}..." rows="1" onkeydown="handleGrpKey(event,'${gid}')" oninput="handleTyping(this)"></textarea>
+        <button class="icon-btn" onclick="openGrpUpload('${gid}')">📎</button>
+        <button class="send-btn" onclick="sendGroupMsg('${gid}')">➤</button>
+      </div>
+    </div>
+  </div>`;
+  renderGroupMessages(gid);
+}
+
+function renderGroupMessages(gid){
+  const g=DB.groups[gid];if(!g)return;
+  const inner=document.getElementById('grpMsgsInner');if(!inner)return;
+  const allMsgs=[...(g.systemMsgs||[]),...(g.messages||[])].sort((a,b)=>new Date(a.time)-new Date(b.time));
+  if(!allMsgs.length){inner.innerHTML=`<div class="empty" style="margin:auto;padding-top:60px"><div class="e-icon">👥</div><p>بداية مجموعة <strong>${esc(g.name)}</strong></p></div>`;return;}
+  let html='';let lastDate='';
+  allMsgs.forEach(msg=>{
+    const md=fmtDate(msg.time);if(md!==lastDate){html+=`<div class="sys-divider">${md}</div>`;lastDate=md;}
+    if(msg.type==='system'){html+=`<div class="sys-divider" style="color:var(--accent)">${esc(msg.text)}</div>`;return;}
+    const u=DB.users[msg.user]||{display:msg.user};const isOwn=msg.user===me.username;
+    let reactHtml='';
+    if(msg.reactions&&Object.keys(msg.reactions).length){reactHtml='<div class="msg-reactions">';Object.entries(msg.reactions).forEach(([em,users])=>{const mine=users.includes(me.username);reactHtml+=`<div class="reaction${mine?' mine':''}" onclick="toggleGrpReact('${gid}','${msg.id}','${em}')">${em} ${users.length}</div>`;});reactHtml+='</div>';}
+    const contentHtml=msg.imageUrl?`<img class="msg-image" src="${msg.imageUrl}" alt="صورة" onclick="openImageModal('${msg.imageUrl}')">`:`<div class="msg-text">${processMsg(msg.text||'')}</div>`;
+    html+=`<div class="msg-group${isOwn?' own':''}" id="grpmsg-${msg.id}">
+      <div class="msg-av" style="background:${avatarColor(msg.user)}">${u.photoURL?`<img src="${u.photoURL}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`:esc((u.avatar||u.display[0]).slice(0,2))}</div>
+      <div class="msg-body">
+        <div class="msg-meta"><span class="msg-author" style="color:${avatarColor(msg.user)}">${esc(u.display)}</span><span class="msg-ts">${fmtRel(msg.time)}</span></div>
+        ${contentHtml}${reactHtml}
+      </div>
+      <div class="msg-actions">
+        <button class="msg-act-btn" onclick="addGrpReactPicker('${gid}','${msg.id}')">😊</button>
+        ${isOwn||g.owner===me.username?`<button class="msg-act-btn" onclick="deleteGrpMsg('${gid}','${msg.id}')">🗑️</button>`:''}
+      </div>
+    </div>`;
+  });
+  inner.innerHTML=html;
+  const wrap=document.getElementById('grpMsgsWrap');if(wrap)wrap.scrollTop=wrap.scrollHeight;
+}
+
+function handleGrpKey(e,gid){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendGroupMsg(gid);return;}const ta=e.target;ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,120)+'px';}
+function sendGroupMsg(gid){
+  const input=document.getElementById('grpInputEl');if(!input)return;
+  const text=input.value.trim();if(!text)return;
+  const g=DB.groups[gid];if(!g)return;
+  if(!g.messages)g.messages=[];
+  g.messages.push({id:uid(),user:me.username,text,time:new Date().toISOString(),reactions:{}});
+  if(g.messages.length>1000)g.messages.shift();
+  saveDB();input.value='';input.style.height='auto';renderGroupMessages(gid);renderDMSidebar();
+}
+function openGrpUpload(gid){const input=document.createElement('input');input.type='file';input.accept='image/*';input.onchange=e=>{const file=e.target.files[0];if(!file)return;if(file.size>5*1024*1024){toast('❌ أكبر من 5MB','err');return;}const reader=new FileReader();reader.onload=ev=>{const g=DB.groups[gid];if(!g.messages)g.messages=[];g.messages.push({id:uid(),user:me.username,text:'',imageUrl:ev.target.result,time:new Date().toISOString(),reactions:{}});saveDB();renderGroupMessages(gid);toast('✅ تم الإرسال!');};reader.readAsDataURL(file);};input.click();}
+function deleteGrpMsg(gid,msgId){const g=DB.groups[gid];if(!g)return;g.messages=(g.messages||[]).filter(m=>m.id!==msgId);saveDB();renderGroupMessages(gid);toast('🗑️ تم الحذف');}
+function toggleGrpReact(gid,msgId,emoji){const g=DB.groups[gid];if(!g)return;const msg=(g.messages||[]).find(m=>m.id===msgId);if(!msg)return;if(!msg.reactions)msg.reactions={};if(!msg.reactions[emoji])msg.reactions[emoji]=[];const idx=msg.reactions[emoji].indexOf(me.username);if(idx===-1)msg.reactions[emoji].push(me.username);else msg.reactions[emoji].splice(idx,1);if(!msg.reactions[emoji].length)delete msg.reactions[emoji];saveDB();renderGroupMessages(gid);}
+function addGrpReactPicker(gid,msgId){const quick=['👍','❤️','😂','😮','😢','😡','🔥','✨'];const ex=document.getElementById('quickReactPicker');if(ex)ex.remove();const picker=document.createElement('div');picker.id='quickReactPicker';picker.style.cssText='position:fixed;z-index:500;background:var(--bg-card);border:1px solid var(--border-2);border-radius:12px;padding:8px;display:flex;gap:4px;box-shadow:0 8px 32px rgba(0,0,0,.4)';quick.forEach(e=>{const btn=document.createElement('div');btn.className='emoji-item';btn.style.cssText='padding:6px;font-size:22px;cursor:pointer;border-radius:8px';btn.textContent=e;btn.onclick=()=>{toggleGrpReact(gid,msgId,e);picker.remove();};picker.appendChild(btn);});document.body.appendChild(picker);const el=document.getElementById('grpmsg-'+msgId);if(el){const r=el.getBoundingClientRect();picker.style.top=(r.top-60)+'px';picker.style.right='100px';}setTimeout(()=>document.addEventListener('click',()=>picker.remove(),{once:true}),50);}
+
+function showGroupInfo(gid){
+  const g=DB.groups[gid];if(!g)return;
+  const ov=document.createElement('div');ov.className='modal-overlay';ov.id='grpInfoOv';
+  ov.innerHTML=`<div class="modal"><h2>👥 ${esc(g.name)}</h2>
+    <p style="color:var(--text-3);margin-bottom:12px">تم الإنشاء: ${fmtDate(g.createdAt)}</p>
+    <div class="form-group"><label>الأعضاء (${g.members.length})</label>
+      <div style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto">
+        ${g.members.map(uname=>{const u=DB.users[uname]||{display:uname};const isGrpOwner=uname===g.owner;return `<div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg-input);border-radius:8px">
+          <div style="width:32px;height:32px;border-radius:50%;background:${avatarColor(uname)};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">${esc((u.avatar||u.display[0]).slice(0,2))}</div>
+          <div style="flex:1"><div style="font-weight:600">${esc(u.display)}</div>${isGrpOwner?'<div style="font-size:11px;color:var(--accent)">👑 المالك</div>':''}</div>
+          ${g.owner===me.username&&uname!==me.username?`<button class="btn btn-danger btn-sm" onclick="removeFromGroup('${gid}','${uname}')">إزالة</button>`:''}
+        </div>`;}).join('')}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('grpInfoOv').remove()">إغلاق</button>
+    </div>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});document.body.appendChild(ov);
+}
+
+function openAddToGroup(gid){
+  const g=DB.groups[gid];const myUser=DB.users[me.username];
+  const friends=(myUser.friends||[]).filter(f=>!g.members.includes(f));
+  const ov=document.createElement('div');ov.className='modal-overlay';ov.id='addGrpOv';
+  ov.innerHTML=`<div class="modal"><h2>➕ إضافة أعضاء</h2>
+    <div style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto">
+      ${friends.length===0?'<p style="color:var(--text-4);text-align:center;padding:12px">لا يوجد أصدقاء لإضافتهم</p>':
+      friends.map(f=>{const fu=DB.users[f];if(!fu)return '';return `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:8px;background:var(--bg-input)">
+        <input type="checkbox" value="${f}" class="add-grp-check">
+        <div style="width:28px;height:28px;border-radius:50%;background:${avatarColor(f)};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">${esc((fu.avatar||fu.display[0]).slice(0,2))}</div>
+        <span style="font-weight:600">${esc(fu.display)}</span>
+      </label>`;}).join('')}
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('addGrpOv').remove()">إغلاق</button>
+      <button class="btn btn-accent" onclick="addMembersToGroup('${gid}')">إضافة ✅</button>
+    </div>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});document.body.appendChild(ov);
+}
+
+function addMembersToGroup(gid){
+  const g=DB.groups[gid];if(!g)return;
+  const checked=[...document.querySelectorAll('.add-grp-check:checked')].map(c=>c.value);
+  if(!checked.length){toast('❌ اختر عضو','err');return;}
+  checked.forEach(uname=>{
+    if(!g.members.includes(uname)){
+      g.members.push(uname);
+      if(!g.systemMsgs)g.systemMsgs=[];
+      g.systemMsgs.push({id:uid(),type:'system',text:'تمت إضافة '+( DB.users[uname]?.display||uname),time:new Date().toISOString()});
+    }
+  });
+  saveDB();document.getElementById('addGrpOv')?.remove();toast('✅ تمت الإضافة!');renderGroupChat(gid);
+}
+
+function removeFromGroup(gid,uname){
+  const g=DB.groups[gid];if(!g)return;
+  g.members=g.members.filter(m=>m!==uname);
+  if(!g.systemMsgs)g.systemMsgs=[];
+  g.systemMsgs.push({id:uid(),type:'system',text:'تمت إزالة '+(DB.users[uname]?.display||uname),time:new Date().toISOString()});
+  saveDB();document.getElementById('grpInfoOv')?.remove();toast('👟 تمت الإزالة');renderGroupChat(gid);
+}
+
+function leaveGroup(gid){
+  const g=DB.groups[gid];if(!g)return;
+  if(!confirm('هل تريد مغادرة '+g.name+'؟'))return;
+  g.members=g.members.filter(m=>m!==me.username);
+  if(!g.systemMsgs)g.systemMsgs=[];
+  g.systemMsgs.push({id:uid(),type:'system',text:'غادر '+(DB.users[me.username]?.display||me.username),time:new Date().toISOString()});
+  if(g.owner===me.username&&g.members.length>0)g.owner=g.members[0];
+  saveDB();activeDM=null;openDMView();toast('🚪 غادرت المجموعة');
+}
+
+function editGroup(gid){
+  const g=DB.groups[gid];if(!g)return;
+  const ov=document.createElement('div');ov.className='modal-overlay';ov.id='editGrpOv';
+  ov.innerHTML=`<div class="modal"><h2>✏️ تعديل المجموعة</h2>
+    <div class="form-group"><label>اسم المجموعة</label><input id="editGrpName" type="text" value="${esc(g.name)}"></div>
+    <div class="form-group"><label>إيموجي</label><input id="editGrpEmoji" type="text" value="${g.avatar||'👥'}" maxlength="2"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('editGrpOv').remove()">إغلاق</button>
+      <button class="btn btn-accent" onclick="saveGroupEdit('${gid}')">💾 حفظ</button>
+    </div>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});document.body.appendChild(ov);
+}
+
+function saveGroupEdit(gid){
+  const g=DB.groups[gid];if(!g)return;
+  const newName=document.getElementById('editGrpName')?.value.trim();
+  const newEmoji=document.getElementById('editGrpEmoji')?.value.trim();
+  if(newName)g.name=newName;
+  if(newEmoji)g.avatar=newEmoji;
+  if(!g.systemMsgs)g.systemMsgs=[];
+  g.systemMsgs.push({id:uid(),type:'system',text:'تم تغيير اسم المجموعة إلى '+g.name,time:new Date().toISOString()});
+  saveDB();document.getElementById('editGrpOv')?.remove();toast('✅ تم التعديل!');renderGroupChat(gid);renderDMSidebar();
+}
+
+/* ═══════════════════════════════════════════════
+   VOICE ROOM: AUTO-MIC + LIVE NAMES ON SIDE
+═══════════════════════════════════════════════ */
+async function joinVoiceChannel(sid,cid,ch){
+  if(voiceRoom)leaveVoiceChannel();
+  // Auto enable mic on join
+  try{
+    localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+    // Auto-unmuted by default
+    localStream.getAudioTracks().forEach(t=>t.enabled=true);
+  }catch(e){toast('❌ لا يمكن الوصول للميكروفون','err');return;}
+  if(!DB.servers[sid].voiceRooms)DB.servers[sid].voiceRooms={};
+  if(!DB.servers[sid].voiceRooms[cid])DB.servers[sid].voiceRooms[cid]={};
+  DB.servers[sid].voiceRooms[cid][me.username]={joinedAt:new Date().toISOString(),muted:false,deafened:false};
+  saveDB();voiceRoom={sid,cid,name:ch.name};activeServer=sid;activeChannel=cid;
+  renderChannels(sid);renderVoiceScreen(sid,cid,ch);showScreen('voiceScreen');closeMobilePanels();
+  toast('🎤 انضممت وتم تفعيل المايك تلقائياً!');
+}
+
+function renderVoiceScreen(sid,cid,ch){
+  const vs=document.getElementById('voiceScreen');if(!vs)return;
+  const sv=DB.servers[sid];const vu=sv.voiceRooms?.[cid]||{};
+  vs.innerHTML=`
+  <div style="display:flex;flex:1;min-height:0;direction:ltr">
+    <!-- Video Grid -->
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;background:#000;min-width:0">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="font-size:14px;font-weight:700;color:#fff">🔊 ${esc(ch.name)}</span>
+        <span style="background:var(--red);color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:4px">LIVE</span>
+      </div>
+      <div id="voiceVideoGrid" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%">
+        ${renderVoiceCards(vu)}
+      </div>
+      <div id="videoStreamGrid" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%"></div>
+      <audio id="localAudio" autoplay muted style="display:none"></audio>
+      <div id="remoteAudios"></div>
+      <!-- Controls -->
+      <div class="voice-controls" style="margin-top:8px">
+        <button class="vc-btn active" id="muteBtn" onclick="toggleMute()" title="مايك">🎤</button>
+        <button class="vc-btn" id="deafBtn" onclick="toggleDeafen()" title="صوت">🔊</button>
+        <button class="vc-btn" onclick="toggleCamera()" title="كاميرا" id="camBtn">📷</button>
+        <button class="vc-btn" onclick="toggleScreenShare()" title="شاشة" id="screenBtn">🖥️</button>
+        <button class="vc-btn danger" onclick="leaveVoiceChannel();openServer('${sid}')" title="خروج" style="background:rgba(237,66,69,.2);color:var(--red)">📞</button>
+      </div>
+    </div>
+    <!-- Members Sidebar -->
+    <div class="voice-members-side" id="voiceMembersSide">
+      <div class="vms-title">Members — ${Object.keys(vu).length}</div>
+      ${renderVoiceSideList(vu)}
+    </div>
+  </div>`;
+  const la=document.getElementById('localAudio');if(la&&localStream)la.srcObject=localStream;
+  // Mic btn active since auto-enabled
+  const muteBtn=document.getElementById('muteBtn');if(muteBtn)muteBtn.classList.add('active');
+}
+
+function renderVoiceCards(vu){
+  if(!Object.keys(vu).length)return `<div style="color:#666;font-size:14px">لا أحد في القناة</div>`;
+  return Object.entries(vu).map(([uname,info])=>{
+    const u=DB.users[uname]||{display:uname};
+    const isMuted=info?.muted;
+    return `<div style="position:relative;width:200px;height:150px;background:#1a1a2e;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid ${isMuted?'#333':'var(--green)'}">
+      <div style="width:64px;height:64px;border-radius:50%;background:${avatarColor(uname)};display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#fff;border:3px solid ${isMuted?'#555':'var(--green)'}">
+        ${u.photoURL?`<img src="${u.photoURL}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`:esc((u.avatar||u.display[0]).slice(0,2))}
+      </div>
+      <div style="color:#fff;font-size:12px;font-weight:700;margin-top:8px">${esc(u.display)}</div>
+      <div style="position:absolute;bottom:8px;right:8px;font-size:14px">${isMuted?'🔇':'🎤'}</div>
+      ${uname===me.username?'<div style="position:absolute;top:6px;left:6px;background:var(--accent);color:#fff;font-size:9px;font-weight:800;padding:1px 6px;border-radius:4px">أنت</div>':''}
+    </div>`;
+  }).join('');
+}
+
+function renderVoiceSideList(vu){
+  return Object.entries(vu).map(([uname,info])=>{
+    const u=DB.users[uname]||{display:uname};
+    const isMuted=info?.muted;
+    const isSharing=info?.sharing;
+    return `<div class="vms-item">
+      <div class="vms-av" style="background:${avatarColor(uname)};border:2px solid ${isMuted?'#555':'var(--green)'}">
+        ${u.photoURL?`<img src="${u.photoURL}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`:esc((u.avatar||u.display[0]).slice(0,2))}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.display)}</div>
+        <div style="font-size:11px;color:var(--text-4)">${isSharing?'🖥️ يشارك الشاشة':isMuted?'🔇 مكتوم':'🎤 يتحدث'}</div>
+      </div>
+      <div style="font-size:16px">${isMuted?'🔇':'🎤'}</div>
+    </div>`;
+  }).join('');
 }
