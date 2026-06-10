@@ -1330,3 +1330,219 @@ function ownerKickFromVoice(sid,cid,uname){
   toast('👟 تم طرد '+DB.users[uname]?.display+' من الكالم');
   ownerTab('voice',document.querySelector('.op-tab.active'));
 }
+
+/* ═══════════════════════════════════════════════
+   SHOP SYSTEM
+═══════════════════════════════════════════════ */
+const SHOP_ITEMS = [
+  // Banners
+  {id:'banner_galaxy',type:'banner',name:'Galaxy',desc:'بنر مجرّة مضيء',price:5.99,preview:'linear-gradient(135deg,#0f0c29,#302b63,#24243e)',tag:''},
+  {id:'banner_fire',type:'banner',name:'Fire Storm',desc:'بنر نار متقدة',price:5.99,preview:'linear-gradient(135deg,#f5af19,#f12711)',tag:''},
+  {id:'banner_ocean',type:'banner',name:'Deep Ocean',desc:'بنر المحيط العميق',price:5.99,preview:'linear-gradient(135deg,#005c97,#363795)',tag:''},
+  {id:'banner_sakura',type:'banner',name:'Sakura',desc:'بنر أزهار الكرز',price:5.99,preview:'linear-gradient(135deg,#f7797d,#FBD786,#C6FFDD)',tag:''},
+  {id:'banner_neon',type:'banner',name:'Neon City',desc:'بنر المدينة النيون',price:5.99,preview:'linear-gradient(135deg,#00c6ff,#0072ff)',tag:''},
+  {id:'banner_dark',type:'banner',name:'Dark Matter',desc:'بنر المادة المظلمة',price:5.99,preview:'linear-gradient(135deg,#0f2027,#203a43,#2c5364)',tag:''},
+  {id:'banner_aurora',type:'banner',name:'Aurora',desc:'الشفق القطبي',price:5.99,preview:'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460,#e94560)',tag:'NEW'},
+  {id:'banner_gold',type:'banner',name:'Golden Hour',desc:'بنر الذهب',price:8.99,preview:'linear-gradient(135deg,#f7971e,#ffd200)',tag:''},
+  // Decorations
+  {id:'deco_crown',type:'decoration',name:'Crown',desc:'تاج ذهبي فوق الأفاتار',price:5.99,emoji:'👑',tag:''},
+  {id:'deco_wings',type:'decoration',name:'Fallen Angel',desc:'أجنحة الملاك الساقط',price:5.99,emoji:'🦋',tag:''},
+  {id:'deco_fire',type:'decoration',name:'Spirit Embers',desc:'ديكور جمر ناري',price:5.99,emoji:'🔥',tag:'NEW'},
+  {id:'deco_star',type:'decoration',name:'Star Struck',desc:'نجوم متلألئة',price:5.99,emoji:'⭐',tag:''},
+  {id:'deco_magic',type:'decoration',name:'Magic Mists',desc:'ضباب سحري',price:5.99,emoji:'✨',tag:'ORBS'},
+  {id:'deco_angel',type:'decoration',name:'Angel Halo',desc:'هالة الملاك',price:5.99,emoji:'😇',tag:''},
+  {id:'deco_devil',type:'decoration',name:'Oni Curse',desc:'لعنة الشيطان',price:5.99,emoji:'😈',tag:''},
+  {id:'deco_venom',type:'decoration',name:'Venom',desc:'ديكور فينوم',price:8.99,emoji:'🕷️',tag:''},
+  // Bundles
+  {id:'bundle_starter',type:'bundle',name:'Starter Pack',desc:'بنر + ديكور + نيترو شهر',price:15.99,emoji:'🎁',tag:'-11%'},
+  {id:'bundle_pro',type:'bundle',name:'Pro Pack',desc:'3 بنرات + 2 ديكورات + نيترو 3 أشهر',price:29.99,emoji:'💎',tag:'-15%'},
+];
+
+function openShop(){
+  const ex=document.getElementById('shopOverlay'); if(ex)ex.remove();
+  const myUser=DB.users[me.username];
+  const purchased=myUser.shopItems||[];
+  const ov=document.createElement('div'); ov.id='shopOverlay'; ov.className='shop-overlay';
+  ov.innerHTML=`
+  <div class="shop-panel">
+    <div class="shop-header">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:24px">🛍️</span>
+        <div>
+          <div style="font-size:18px;font-weight:900;color:var(--text-1)">متجر Tiscord</div>
+          <div style="font-size:12px;color:var(--text-3)">خصّص تجربتك</div>
+        </div>
+      </div>
+      <button class="shop-close" onclick="document.getElementById('shopOverlay').remove()">✕</button>
+    </div>
+    <div class="shop-tabs">
+      <button class="shop-tab active" onclick="shopFilter('all',this)">🌟 الكل</button>
+      <button class="shop-tab" onclick="shopFilter('banner',this)">🖼️ بنرات</button>
+      <button class="shop-tab" onclick="shopFilter('decoration',this)">✨ ديكورات</button>
+      <button class="shop-tab" onclick="shopFilter('bundle',this)">🎁 باقات</button>
+    </div>
+    <div class="shop-grid" id="shopGrid">${renderShopGrid('all',purchased)}</div>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  document.body.appendChild(ov);
+}
+
+function renderShopGrid(filter,purchased){
+  const items=filter==='all'?SHOP_ITEMS:SHOP_ITEMS.filter(i=>i.type===filter);
+  return items.map(item=>{
+    const owned=purchased.includes(item.id);
+    const preview=item.type==='banner'
+      ?`<div style="height:90px;border-radius:10px 10px 0 0;${item.preview?'background:'+item.preview:''};display:flex;align-items:center;justify-content:center;font-size:36px">${item.emoji||''}</div>`
+      :`<div style="height:90px;border-radius:10px 10px 0 0;background:var(--bg-input);display:flex;align-items:center;justify-content:center;font-size:48px">${item.emoji||'🎨'}</div>`;
+    return `<div class="shop-card">
+      ${item.tag?`<div class="shop-tag ${item.tag==='ORBS'?'tag-orbs':item.tag==='NEW'?'tag-new':'tag-discount'}">${item.tag}</div>`:''}
+      ${preview}
+      <div class="shop-card-body">
+        <div class="shop-item-name">${item.name}</div>
+        <div class="shop-item-desc">${item.desc}</div>
+        <div class="shop-card-footer">
+          <div class="shop-price">$${item.price}</div>
+          ${owned
+            ? `<button class="shop-btn shop-btn-owned" onclick="applyShopItem('${item.id}')">✅ مفعّل</button>`
+            : `<div style="display:flex;gap:6px">
+                <button class="shop-btn shop-btn-buy" onclick="buyShopItem('${item.id}')">شراء</button>
+                <button class="shop-btn shop-btn-gift" onclick="giftShopItem('${item.id}')" title="إهداء">🎁</button>
+               </div>`}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function shopFilter(type,el){
+  document.querySelectorAll('.shop-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  const myUser=DB.users[me.username];
+  document.getElementById('shopGrid').innerHTML=renderShopGrid(type,myUser.shopItems||[]);
+}
+
+function buyShopItem(itemId){
+  const item=SHOP_ITEMS.find(i=>i.id===itemId); if(!item) return;
+  const ov=document.createElement('div'); ov.className='modal-overlay'; ov.id='buyOv';
+  ov.innerHTML=`<div class="modal" style="text-align:center;max-width:420px">
+    <div style="font-size:48px;margin-bottom:8px">${item.emoji||'🛍️'}</div>
+    <h2 style="margin-bottom:4px">${item.name}</h2>
+    <p style="color:var(--text-3);margin-bottom:16px">${item.desc}</p>
+    <div style="background:rgba(0,180,0,.08);border:1px solid rgba(0,180,0,.3);border-radius:12px;padding:14px;margin-bottom:16px">
+      <div style="font-weight:700;color:var(--green);margin-bottom:8px">💳 الدفع عبر PayPal</div>
+      <p style="font-size:13px;color:var(--text-2);margin-bottom:10px">أرسل <strong>$${item.price}</strong> ثم أرسل لقطة الشاشة للأدمن لتفعيل العنصر</p>
+      <div style="display:flex;align-items:center;gap:8px;background:var(--bg-input);padding:8px 12px;border-radius:8px;justify-content:center;flex-wrap:wrap">
+        <span style="font-size:13px;color:var(--text-3)">PayPal:</span>
+        <span style="font-weight:700;color:var(--accent);direction:ltr">nujhosen@gmail.com</span>
+        <button class="btn btn-ghost btn-sm" onclick="copyText('nujhosen@gmail.com')">📋</button>
+      </div>
+    </div>
+    <div style="font-size:13px;color:var(--text-4);margin-bottom:16px">بعد الدفع أكتب في ملاحظة الدفع: <strong>${me.username} - ${item.id}</strong></div>
+    <div class="modal-footer" style="justify-content:center;gap:8px">
+      <button class="btn btn-ghost" onclick="document.getElementById('buyOv').remove()">إغلاق</button>
+      <button class="btn btn-accent" onclick="window.open('https://www.paypal.com/paypalme/nujhosen/${item.price}','_blank');document.getElementById('buyOv').remove()">💳 ادفع الآن</button>
+      ${isOwnerUser()?`<button class="btn btn-success" onclick="ownerActivateItem('${me.username}','${itemId}');document.getElementById('buyOv').remove()">✅ تفعيل مباشر</button>`:''}
+    </div>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  document.body.appendChild(ov);
+}
+
+function giftShopItem(itemId){
+  const item=SHOP_ITEMS.find(i=>i.id===itemId); if(!item) return;
+  const myUser=DB.users[me.username]; const friends=myUser.friends||[];
+  const ov=document.createElement('div'); ov.className='modal-overlay'; ov.id='giftOv';
+  ov.innerHTML=`<div class="modal" style="max-width:480px">
+    <h2>🎁 إهداء ${item.name}</h2>
+    <div style="background:var(--bg-input);border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <span style="font-size:28px">${item.emoji||'🎨'}</span>
+      <div><div style="font-weight:700">${item.name}</div><div style="font-size:12px;color:var(--text-3)">$${item.price}</div></div>
+    </div>
+    <div class="form-group"><label>أرسل إلى</label>
+      <select id="giftFriend" style="width:100%;padding:9px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-1);font-family:var(--font-main)">
+        <option value="">اختر صديق...</option>
+        ${friends.map(f=>{const fu=DB.users[f];return fu?`<option value="${f}">${esc(fu.display)} (${f})</option>`:''}).join('')}
+        ${friends.length===0?'<option disabled>لا يوجد أصدقاء — أضف أصدقاء أولاً</option>':''}
+      </select>
+    </div>
+    <div class="form-group"><label>رسالة (اختياري)</label>
+      <textarea id="giftMsg" placeholder="اكتب رسالة مع الهدية..." style="width:100%;padding:9px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-1);font-family:var(--font-main);resize:none;height:80px;max-length:190"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('giftOv').remove()">إغلاق</button>
+      <button class="btn btn-accent" onclick="sendGift('${itemId}')">🎁 إرسال الهدية</button>
+    </div>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  document.body.appendChild(ov);
+}
+
+function sendGift(itemId){
+  const toUser=document.getElementById('giftFriend')?.value;
+  const msg=document.getElementById('giftMsg')?.value.trim();
+  if(!toUser){toast('❌ اختر صديق','err');return;}
+  const item=SHOP_ITEMS.find(i=>i.id===itemId);
+  // Store gift notification
+  if(!DB.users[toUser].gifts) DB.users[toUser].gifts=[];
+  DB.users[toUser].gifts.push({from:me.username,itemId,msg,time:new Date().toISOString()});
+  addLog(null,'إهداء عنصر',me.username,toUser+' — '+item?.name);
+  saveDB(); document.getElementById('giftOv').remove();
+  toast('🎁 تم إرسال الهدية لـ '+DB.users[toUser]?.display+'!');
+}
+
+function applyShopItem(itemId){
+  const item=SHOP_ITEMS.find(i=>i.id===itemId); if(!item) return;
+  const u=DB.users[me.username];
+  if(item.type==='banner'){
+    u.bannerColor=item.preview||'#5865f2'; u.banner='';
+    toast('✅ تم تطبيق البنر!');
+  } else if(item.type==='decoration'){
+    u.decoration=item.emoji;
+    toast('✅ تم تطبيق الديكور!');
+  }
+  saveDB(); document.getElementById('shopOverlay')?.remove();
+}
+
+function ownerActivateItem(uname,itemId){
+  const u=DB.users[uname]; if(!u) return;
+  if(!u.shopItems) u.shopItems=[];
+  if(!u.shopItems.includes(itemId)) u.shopItems.push(itemId);
+  const item=SHOP_ITEMS.find(i=>i.id===itemId);
+  // Auto apply
+  if(item?.type==='banner'&&item.preview){u.bannerColor=item.preview;u.banner='';}
+  if(item?.type==='decoration') u.decoration=item.emoji;
+  addLog(null,'تفعيل عنصر متجر','hosennujq2',uname+' — '+item?.name);
+  saveDB(); toast('✅ تم تفعيل '+item?.name+' لـ '+u.display);
+}
+
+/* ═══════════════════════════════════════════════
+   AUTO JOIN PUBLIC SERVERS (no prompt)
+═══════════════════════════════════════════════ */
+function joinServer(){
+  const input=document.getElementById('joinCode'); if(!input){toast('❌ خطأ','err');return;}
+  const code=input.value.trim().toUpperCase();
+  const errEl=document.getElementById('joinError');
+  if(!code){if(errEl){errEl.textContent='❌ أدخل كود الدعوة';errEl.style.display='block';}return;}
+  const sv=Object.values(DB.servers).find(s=>s.inviteCode&&s.inviteCode.trim().toUpperCase()===code);
+  if(!sv){if(errEl){errEl.textContent='❌ كود الدعوة غير صحيح';errEl.style.display='block';}return;}
+  if(sv.bans?.includes(me.username)){toast('❌ أنت محظور من هذا السيرفر','err');return;}
+  if(sv.members?.[me.username]){toast('أنت موجود في السيرفر!');closeModal('joinServerModal');openServer(sv.id);return;}
+  // PUBLIC = direct join, no confirmation needed
+  if(sv.isPublic){
+    sv.members[me.username]={role:'user',joinDate:new Date().toISOString()};
+    saveDB(); closeModal('joinServerModal');
+    if(errEl)errEl.style.display='none'; input.value='';
+    document.getElementById('serverPreview')?.classList.add('hidden');
+    addLog(sv.id,'انضمام للسيرفر',me.username);
+    renderRail(); openServer(sv.id); toast('✅ أهلاً في '+sv.name+'!');
+    return;
+  }
+  // PRIVATE = show confirmation
+  if(!confirm('هل تريد الانضمام لسيرفر "'+sv.name+'"؟'))return;
+  sv.members[me.username]={role:'user',joinDate:new Date().toISOString()};
+  saveDB(); closeModal('joinServerModal');
+  if(errEl)errEl.style.display='none'; input.value='';
+  document.getElementById('serverPreview')?.classList.add('hidden');
+  addLog(sv.id,'انضمام للسيرفر',me.username);
+  renderRail(); openServer(sv.id); toast('✅ أهلاً في '+sv.name+'!');
+}
