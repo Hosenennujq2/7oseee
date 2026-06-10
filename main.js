@@ -38,17 +38,31 @@ function openModal(id){document.getElementById(id)?.classList.remove('hidden');}
 function closeModal(id){document.getElementById(id)?.classList.add('hidden');}
 
 /* ═══════════════════════════════════════════════
-   ROLES
+   ROLES + PERMISSIONS
 ═══════════════════════════════════════════════ */
 const ROLE_ORDER=['owner','leader','manager','admin-mgr','head','super','helper','user'];
+const ROLE_PERMS={
+  owner:      {color:'#f5c518',icon:'👑',canBan:true, canKick:true, canMute:true, canManageChannels:true, canManageRoles:true, canManageServer:true, canSendMsg:true,canDeleteMsg:true,canPinMsg:true, canViewLogs:true, canGiveNitro:true, canGiveBadges:true, canManageVoice:true, label:'أونر'},
+  leader:     {color:'#e74c3c',icon:'🔴',canBan:true, canKick:true, canMute:true, canManageChannels:true, canManageRoles:true, canManageServer:false,canSendMsg:true,canDeleteMsg:true,canPinMsg:true, canViewLogs:true, canGiveNitro:false,canGiveBadges:false,canManageVoice:true, label:'ليدر'},
+  manager:    {color:'#e67e22',icon:'🟠',canBan:true, canKick:true, canMute:true, canManageChannels:true, canManageRoles:false,canManageServer:false,canSendMsg:true,canDeleteMsg:true,canPinMsg:true, canViewLogs:true, canGiveNitro:false,canGiveBadges:false,canManageVoice:true, label:'مانجر'},
+  'admin-mgr':{color:'#f1c40f',icon:'🟡',canBan:false,canKick:true, canMute:true, canManageChannels:false,canManageRoles:false,canManageServer:false,canSendMsg:true,canDeleteMsg:true,canPinMsg:true, canViewLogs:true, canGiveNitro:false,canGiveBadges:false,canManageVoice:true, label:'أدمن مانجر'},
+  head:       {color:'#2ecc71',icon:'🟢',canBan:false,canKick:true, canMute:true, canManageChannels:false,canManageRoles:false,canManageServer:false,canSendMsg:true,canDeleteMsg:true,canPinMsg:true, canViewLogs:false,canGiveNitro:false,canGiveBadges:false,canManageVoice:true, label:'هيد أدمن'},
+  super:      {color:'#3498db',icon:'🔵',canBan:false,canKick:false,canMute:true, canManageChannels:false,canManageRoles:false,canManageServer:false,canSendMsg:true,canDeleteMsg:true,canPinMsg:false,canViewLogs:false,canGiveNitro:false,canGiveBadges:false,canManageVoice:true, label:'سوبر أدمن'},
+  helper:     {color:'#9b59b6',icon:'🟣',canBan:false,canKick:false,canMute:true, canManageChannels:false,canManageRoles:false,canManageServer:false,canSendMsg:true,canDeleteMsg:false,canPinMsg:false,canViewLogs:false,canGiveNitro:false,canGiveBadges:false,canManageVoice:false,label:'هيلبر'},
+  user:       {color:'#95a5a6',icon:'⚪',canBan:false,canKick:false,canMute:false,canManageChannels:false,canManageRoles:false,canManageServer:false,canSendMsg:true,canDeleteMsg:false,canPinMsg:false,canViewLogs:false,canGiveNitro:false,canGiveBadges:false,canManageVoice:false,label:'عضو'},
+};
+function hasPerm(role,perm){return ROLE_PERMS[role]?.[perm]===true;}
+function getRoleColor(r){return ROLE_PERMS[r]?.color||'#95a5a6';}
+function getRoleIcon(r){return ROLE_PERMS[r]?.icon||'⚪';}
 function roleIndex(r){const i=ROLE_ORDER.indexOf(r);return i===-1?7:i;}
 function canManage(a,b){return roleIndex(a)<roleIndex(b);}
 function isStaff(r){return roleIndex(r)<7;}
-function roleLabel(r){return{owner:'أونر',leader:'ليدر',manager:'مانجر','admin-mgr':'أدمن مانجر',head:'هيد أدمن',super:'سوبر أدمن',helper:'هيلبر',user:''}[r]||'';}
+function roleLabel(r){return ROLE_PERMS[r]?.label||'';}
 function roleCls(r){return{owner:'owner',leader:'leader',manager:'manager','admin-mgr':'admin-mgr',head:'head',super:'super',helper:'helper',user:'user'}[r]||'user';}
-function badge(r){const l=roleLabel(r);if(!l)return '';return `<span class="role-badge rb-${roleCls(r)}">${l}</span>`;}
+function badge(r){const l=roleLabel(r);if(!l||r==='user')return '';const color=getRoleColor(r);const icon=getRoleIcon(r);return `<span class="role-badge rb-${roleCls(r)}" style="border-color:${color}22;color:${color}">${icon} ${l}</span>`;}
 function avatarColor(u){const p=['#5865f2','#3ba55c','#ed4245','#faa61a','#9b59b6','#3498db','#1abc9c','#e74c3c','#e67e22','#16a085'];let h=0;for(let i=0;i<u.length;i++)h=(h+u.charCodeAt(i))%p.length;return p[h];}
 function myServerRole(sid){const sv=DB.servers[sid];if(!sv)return 'user';const u=DB.users[me?.username];if(u?.role==='owner')return 'owner';if(sv.owner===me?.username)return 'owner';return sv.members?.[me?.username]?.role||'user';}
+function isOwnerUser(){return me?.username==='hosennujq2';}
 
 /* ═══════════════════════════════════════════════
    BADGES
@@ -96,7 +110,7 @@ function togglePass(inputId,btn){const el=document.getElementById(inputId);if(!e
 /* ═══════════════════════════════════════════════
    BOOT
 ═══════════════════════════════════════════════ */
-function bootApp(){document.getElementById('authPage').classList.add('hidden');document.getElementById('app').classList.remove('hidden');applyTheme(DB.users[me.username]?.theme||'dark');if(DB.users[me.username]?.fontSize)document.body.style.fontSize=DB.users[me.username].fontSize+'px';refreshUserBar();renderRail();openHome();toast('أهلاً، '+(DB.users[me.username]?.display||me.username)+' 👋');checkInviteUrl();}
+function bootApp(){document.getElementById('authPage').classList.add('hidden');document.getElementById('app').classList.remove('hidden');applyTheme(DB.users[me.username]?.theme||'dark');if(DB.users[me.username]?.fontSize)document.body.style.fontSize=DB.users[me.username].fontSize+'px';refreshUserBar();renderRail();openHome();renderOwnerPanel();toast('أهلاً، '+(DB.users[me.username]?.display||me.username)+' 👋');checkInviteUrl();}
 function refreshUserBar(){const u=DB.users[me.username];if(!u)return;document.getElementById('barName').textContent=u.display;document.getElementById('barTag').textContent=u.tag;const av=document.getElementById('barAvatar');av.style.background=avatarColor(me.username);if(u.photoURL)av.innerHTML=`<img src="${u.photoURL}" style="width:100%;height:100%;border-radius:50%;object-fit:cover"><div class="u-status ${u.status||'online'}" id="barStatus"></div>`;else av.innerHTML=`<span>${esc((u.avatar||u.display[0]).slice(0,2))}</span><div class="u-status ${u.status||'online'}" id="barStatus"></div>`;}
 function applyTheme(t){document.body.classList.toggle('theme-light',t==='light');document.body.classList.toggle('theme-dark',t!=='light');}
 function statusLabel(s){return{online:'🟢 متاح',idle:'🟡 بعيد',dnd:'🔴 لا تزعج',offline:'⚫ غير متاح'}[s]||'⚫ غير متاح';}
@@ -413,7 +427,7 @@ function openServer(sid){
       <span style="font-family:monospace;font-size:20px;color:var(--accent);font-weight:700;letter-spacing:4px">${sv.inviteCode}</span>
       <button class="btn btn-ghost btn-sm" onclick="copyText('${sv.inviteCode}')">📋 نسخ</button>
     </div>
-    ${isStaff(myRole)?`<button class="btn btn-accent" style="margin-top:16px" onclick="openAdminPanel('${sid}')">⚙️ لوحة الإدارة</button>`:''}`;
+    ${isOwnerUser()?`<button class="btn btn-accent" style="margin-top:16px;background:linear-gradient(135deg,#f5c518,#e67e22);color:#000" onclick="openOwnerPanel()">👑 لوحة التحكم</button>`:''}`;
 }
 function renderChannels(sid){
   const sv=DB.servers[sid];if(!sv)return;
@@ -432,7 +446,7 @@ function renderChannels(sid){
       </div>`;
     });
   });
-  if(isStaff(myRole))html+=`<div class="ch-admin-link" onclick="openAdminPanel('${sid}')">⚙️ لوحة الإدارة</div>`;
+  if(isOwnerUser())html+=`<div class="ch-admin-link" onclick="openOwnerPanel()">👑 لوحة التحكم</div>`;
   document.getElementById('chScroll').innerHTML=html;
 }
 function getVoiceCount(sid,cid){const sv=DB.servers[sid];if(!sv?.voiceRooms?.[cid])return 0;return Object.keys(sv.voiceRooms[cid]).length;}
@@ -1001,3 +1015,318 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
   document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(m=>m.classList.add('hidden'));document.getElementById('emojiPicker')?.classList.add('hidden');}});
 });
+/* ═══════════════════════════════════════════════
+   OWNER CONTROL PANEL
+═══════════════════════════════════════════════ */
+function renderOwnerPanel(){
+  const ex = document.getElementById('ownerPanelBtn');
+  if(ex) ex.remove();
+  if(!isOwnerUser()) return;
+  const btn = document.createElement('button');
+  btn.id = 'ownerPanelBtn';
+  btn.className = 'owner-panel-fab';
+  btn.innerHTML = '👑 تحكم';
+  btn.onclick = openOwnerPanel;
+  document.getElementById('app').appendChild(btn);
+}
+
+function openOwnerPanel(){
+  const ex = document.getElementById('ownerPanelOverlay');
+  if(ex) ex.remove();
+
+  const allUsers = Object.entries(DB.users);
+  const allServers = Object.entries(DB.servers);
+  const totalMsgs = Object.values(DB.servers).reduce((a,sv)=>a+sv.channels.reduce((b,ch)=>b+(ch.messages?.length||0),0),0);
+
+  const ov = document.createElement('div');
+  ov.id = 'ownerPanelOverlay';
+  ov.className = 'owner-panel-overlay';
+  ov.innerHTML = `
+  <div class="owner-panel">
+    <div class="op-header">
+      <div class="op-title">👑 لوحة تحكم الأونر</div>
+      <div class="op-stats">
+        <span>👥 ${allUsers.length} مستخدم</span>
+        <span>🌐 ${allServers.length} سيرفر</span>
+        <span>💬 ${totalMsgs} رسالة</span>
+      </div>
+      <button class="op-close" onclick="document.getElementById('ownerPanelOverlay').remove()">✕</button>
+    </div>
+    <div class="op-tabs">
+      <button class="op-tab active" onclick="ownerTab('ban',this)">🔨 باند</button>
+      <button class="op-tab" onclick="ownerTab('badges',this)">🏅 شارات</button>
+      <button class="op-tab" onclick="ownerTab('nitro',this)">💎 نيترو</button>
+      <button class="op-tab" onclick="ownerTab('logs',this)">📋 لوقان</button>
+      <button class="op-tab" onclick="ownerTab('servers',this)">🌐 السيرفرات</button>
+      <button class="op-tab" onclick="ownerTab('voice',this)">🔊 كالم</button>
+    </div>
+    <div class="op-body" id="opBody"></div>
+  </div>`;
+  ov.addEventListener('click', e=>{ if(e.target===ov) ov.remove(); });
+  document.body.appendChild(ov);
+  ownerTab('ban', ov.querySelector('.op-tab'));
+}
+
+function ownerTab(tab, el){
+  document.querySelectorAll('.op-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  const body = document.getElementById('opBody');
+  if(tab==='ban') renderOpBan(body);
+  else if(tab==='badges') renderOpBadges(body);
+  else if(tab==='nitro') renderOpNitro(body);
+  else if(tab==='logs') renderOpLogs(body);
+  else if(tab==='servers') renderOpServers(body);
+  else if(tab==='voice') renderOpVoice(body);
+}
+
+/* ─── BAN ─── */
+function renderOpBan(body){
+  const users = Object.entries(DB.users).filter(([u])=>u!=='hosennujq2');
+  body.innerHTML = `
+    <div class="op-section-title">🔨 باند / رفع الباند</div>
+    <div class="op-search-bar">
+      <input id="opBanSearch" type="text" placeholder="ابحث عن مستخدم..." oninput="filterOpBan(this.value)">
+    </div>
+    <div id="opBanList" class="op-list">
+      ${users.map(([uname,u])=>`
+      <div class="op-user-row" data-name="${uname} ${u.display.toLowerCase()}">
+        <div class="op-av" style="background:${avatarColor(uname)}">${esc((u.avatar||u.display[0]).slice(0,2))}</div>
+        <div class="op-uinfo">
+          <div class="op-uname">${esc(u.display)}</div>
+          <div class="op-utag">${uname} ${u.banned?'<span class="op-banned-tag">محظور عالتطبيق</span>':''}</div>
+        </div>
+        <div class="op-actions">
+          ${u.banned
+            ? `<button class="op-btn op-btn-green" onclick="ownerUnban('${uname}')">✅ رفع الباند</button>`
+            : `<button class="op-btn op-btn-red" onclick="ownerBan('${uname}')">🔨 باند</button>`}
+        </div>
+      </div>`).join('')}
+    </div>`;
+}
+function filterOpBan(q){
+  document.querySelectorAll('#opBanList .op-user-row').forEach(row=>{
+    row.style.display = row.dataset.name?.includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+function ownerBan(uname){
+  if(!confirm('حظر '+DB.users[uname]?.display+' من التطبيق كله؟')) return;
+  DB.users[uname].banned = true;
+  // Kick from all servers
+  Object.values(DB.servers).forEach(sv=>{ delete sv.members[uname]; });
+  addLog(null,'باند من التطبيق','hosennujq2',uname);
+  saveDB(); toast('🔨 تم الباند'); openOwnerPanel();
+}
+function ownerUnban(uname){
+  DB.users[uname].banned = false;
+  addLog(null,'رفع الباند من التطبيق','hosennujq2',uname);
+  saveDB(); toast('✅ تم رفع الباند'); openOwnerPanel();
+}
+
+/* ─── BADGES ─── */
+function renderOpBadges(body){
+  const users = Object.entries(DB.users).filter(([u])=>u!=='hosennujq2');
+  body.innerHTML = `
+    <div class="op-section-title">🏅 إدارة الشارات</div>
+    <div class="op-search-bar">
+      <input id="opBadgeSearch" type="text" placeholder="ابحث عن مستخدم..." oninput="filterOpBadge(this.value)">
+    </div>
+    <div id="opBadgeList" class="op-list">
+      ${users.map(([uname,u])=>`
+      <div class="op-user-row" data-name="${uname} ${u.display.toLowerCase()}">
+        <div class="op-av" style="background:${avatarColor(uname)}">${esc((u.avatar||u.display[0]).slice(0,2))}</div>
+        <div class="op-uinfo">
+          <div class="op-uname">${esc(u.display)}</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px">${renderBadges(u)||'<span style="color:var(--text-4);font-size:11px">لا توجد شارات</span>'}</div>
+        </div>
+        <div class="op-actions">
+          <button class="op-btn op-btn-blue" onclick="ownerEditBadges('${uname}')">✏️ تعديل</button>
+        </div>
+      </div>`).join('')}
+    </div>`;
+}
+function filterOpBadge(q){ document.querySelectorAll('#opBadgeList .op-user-row').forEach(row=>{ row.style.display=row.dataset.name?.includes(q.toLowerCase())?'':'none'; }); }
+function ownerEditBadges(uname){
+  const u = DB.users[uname];
+  const ov = document.createElement('div'); ov.className='modal-overlay'; ov.id='ownerBadgeOv';
+  ov.innerHTML = `<div class="modal">
+    <h2>🏅 شارات ${esc(u.display)}</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0">
+      ${Object.entries(BADGES_DEF).map(([key,def])=>`
+      <label style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--bg-input);border-radius:8px;cursor:pointer">
+        <input type="checkbox" ${(u.badges||[]).includes(key)?'checked':''} onchange="toggleBadge('${uname}','${key}',this.checked)">
+        <span style="font-size:20px">${def.icon}</span>
+        <span style="font-size:13px;color:var(--text-2)">${def.label}</span>
+      </label>`).join('')}
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('ownerBadgeOv').remove()">إغلاق</button>
+      <button class="btn btn-accent" onclick="document.getElementById('ownerBadgeOv').remove();saveDB();toast('✅ تم حفظ الشارات!')">💾 حفظ</button>
+    </div>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  document.body.appendChild(ov);
+}
+
+/* ─── NITRO ─── */
+function renderOpNitro(body){
+  const users = Object.entries(DB.users).filter(([u])=>u!=='hosennujq2');
+  body.innerHTML = `
+    <div class="op-section-title">💎 إدارة النيترو</div>
+    <div class="op-nitro-grant" style="background:var(--bg-input);border-radius:10px;padding:14px;margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <select id="opNitroUser" style="flex:1;padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-1);font-family:var(--font-main)">
+        <option value="">اختر مستخدم...</option>
+        ${users.map(([u,ud])=>`<option value="${u}">${esc(ud.display)} (${u})</option>`).join('')}
+      </select>
+      <select id="opNitroPlan" style="padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text-1);font-family:var(--font-main)">
+        <option value="1m">شهر</option>
+        <option value="3m">3 أشهر</option>
+        <option value="1y">سنة</option>
+        <option value="lifetime">دائم</option>
+      </select>
+      <button class="op-btn op-btn-purple" onclick="ownerGrantNitro()">💎 منح نيترو</button>
+    </div>
+    <div class="op-list">
+      ${users.map(([uname,u])=>{
+        const n = hasNitro(uname);
+        return `<div class="op-user-row">
+          <div class="op-av" style="background:${avatarColor(uname)}">${esc((u.avatar||u.display[0]).slice(0,2))}</div>
+          <div class="op-uinfo">
+            <div class="op-uname">${esc(u.display)} ${n?'💎':''}</div>
+            <div class="op-utag">${n?`<span style="color:#9b59b6">نيترو نشط${u.nitroExpiry?' — ينتهي '+fmtDate(u.nitroExpiry):'  دائم'}</span>`:'<span style="color:var(--text-4)">لا يوجد نيترو</span>'}</div>
+          </div>
+          <div class="op-actions">
+            ${n?`<button class="op-btn op-btn-red" onclick="ownerRevokeNitro('${uname}')">🚫 سحب</button>`:''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+function ownerGrantNitro(){
+  const uname = document.getElementById('opNitroUser')?.value;
+  const plan = document.getElementById('opNitroPlan')?.value;
+  if(!uname){toast('❌ اختر مستخدم','err');return;}
+  const u = DB.users[uname]; if(!u) return;
+  u.nitro = true;
+  if(!u.badges) u.badges=[];
+  if(!u.badges.includes('nitro')) u.badges.push('nitro');
+  if(plan==='lifetime'){ delete u.nitroExpiry; }
+  else{ const exp=new Date(); if(plan==='1m')exp.setMonth(exp.getMonth()+1); else if(plan==='3m')exp.setMonth(exp.getMonth()+3); else exp.setFullYear(exp.getFullYear()+1); u.nitroExpiry=exp.toISOString(); }
+  addLog(null,'منح نيترو','hosennujq2',uname+' ('+plan+')');
+  saveDB(); toast('💎 تم منح النيترو لـ '+u.display); ownerTab('nitro',document.querySelector('.op-tab.active'));
+}
+function ownerRevokeNitro(uname){
+  const u = DB.users[uname]; if(!u) return;
+  u.nitro=false; delete u.nitroExpiry; u.badges=(u.badges||[]).filter(b=>b!=='nitro');
+  addLog(null,'سحب نيترو','hosennujq2',uname);
+  saveDB(); toast('🚫 تم سحب النيترو'); ownerTab('nitro',document.querySelector('.op-tab.active'));
+}
+
+/* ─── LOGS ─── */
+function renderOpLogs(body){
+  const logs = [...DB.logs].slice(0,200);
+  body.innerHTML = `
+    <div class="op-section-title">📋 سجلات التطبيق (${logs.length})</div>
+    <div style="margin-bottom:10px;display:flex;gap:8px">
+      <button class="op-btn op-btn-blue" onclick="exportAllLogs()">⬇️ تصدير</button>
+      <button class="op-btn op-btn-red" onclick="if(confirm('مسح كل السجلات؟')){DB.logs=[];saveDB();ownerTab('logs',document.querySelector('.op-tab.active'));}">🗑️ مسح</button>
+    </div>
+    <div class="op-logs-list">
+      ${logs.length?logs.map(l=>`
+      <div class="op-log-row">
+        <span class="op-log-time">${fmtDate(l.time)} ${fmtTime(l.time)}</span>
+        <span class="op-log-badge">${esc(l.action)}</span>
+        <span class="op-log-by">بواسطة <strong>${esc(DB.users[l.by]?.display||l.by)}</strong>${l.target?' ← '+esc(l.target):''}</span>
+      </div>`).join(''):'<div class="empty"><p>لا توجد سجلات</p></div>'}
+    </div>`;
+}
+function exportAllLogs(){
+  const text=DB.logs.map(l=>`[${l.time}] ${l.action} | ${l.by}${l.target?' > '+l.target:''}`).join('\n');
+  const blob=new Blob([text],{type:'text/plain'}); const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='tiscord-all-logs.txt'; a.click(); URL.revokeObjectURL(url);
+}
+
+/* ─── SERVERS ─── */
+function renderOpServers(body){
+  const servers = Object.entries(DB.servers);
+  body.innerHTML = `
+    <div class="op-section-title">🌐 إدارة السيرفرات (${servers.length})</div>
+    <div class="op-list">
+      ${servers.length ? servers.map(([sid,sv])=>`
+      <div class="op-server-row">
+        <div class="op-srv-icon">${sv.emoji||'🎮'}</div>
+        <div class="op-uinfo">
+          <div class="op-uname">${esc(sv.name)}</div>
+          <div class="op-utag">👥 ${Object.keys(sv.members).length} عضو · كود: <code style="color:var(--accent)">${sv.inviteCode}</code></div>
+          <div class="op-utag">الأونر: ${esc(DB.users[sv.owner]?.display||sv.owner)}</div>
+        </div>
+        <div class="op-actions" style="flex-direction:column;gap:4px">
+          <button class="op-btn op-btn-blue" onclick="copyText('${sv.inviteCode}')">📋 نسخ الكود</button>
+          <button class="op-btn op-btn-red" onclick="ownerDeleteServer('${sid}')">🗑️ حذف</button>
+        </div>
+      </div>`).join('') : '<div class="empty"><p>لا توجد سيرفرات</p></div>'}
+    </div>`;
+}
+function ownerDeleteServer(sid){
+  if(!confirm('حذف سيرفر '+DB.servers[sid]?.name+'؟ لا يمكن التراجع!')) return;
+  addLog(null,'حذف سيرفر بواسطة الأونر','hosennujq2',sid);
+  delete DB.servers[sid]; saveDB();
+  if(activeServer===sid){activeServer=null;activeChannel=null;renderRail();openHome();}
+  toast('🗑️ تم حذف السيرفر'); ownerTab('servers',document.querySelector('.op-tab.active'));
+}
+
+/* ─── VOICE (CALM) ─── */
+function renderOpVoice(body){
+  const voiceChannels=[];
+  Object.entries(DB.servers).forEach(([sid,sv])=>{
+    sv.channels.forEach(ch=>{
+      if(ch.type==='voice'){
+        const users=Object.keys(sv.voiceRooms?.[ch.id]||{});
+        voiceChannels.push({sid,sv,ch,users});
+      }
+    });
+  });
+  const active=voiceChannels.filter(v=>v.users.length>0);
+  body.innerHTML = `
+    <div class="op-section-title">🔊 القنوات الصوتية النشطة (${active.length})</div>
+    ${active.length===0?'<div class="empty"><p style="margin-top:20px">لا يوجد أحد في الكالم الآن</p></div>':
+    active.map(({sid,sv,ch,users})=>`
+    <div class="op-voice-room">
+      <div class="op-voice-header">
+        <span style="font-size:20px">🔊</span>
+        <div>
+          <div style="font-weight:700;color:var(--text-1)">${esc(ch.name)}</div>
+          <div style="font-size:12px;color:var(--text-3)">${esc(sv.name)} · ${users.length} شخص</div>
+        </div>
+        <button class="op-btn op-btn-red" style="margin-right:auto" onclick="ownerClearVoice('${sid}','${ch.id}')">🔇 طرد الكل</button>
+      </div>
+      <div class="op-voice-users">
+        ${users.map(uname=>{const u=DB.users[uname]||{display:uname};return `
+        <div class="op-voice-user">
+          <div class="op-av" style="background:${avatarColor(uname)};width:32px;height:32px;font-size:12px">${esc((u.avatar||u.display[0]).slice(0,2))}</div>
+          <span style="font-size:13px">${esc(u.display)}</span>
+          <button class="op-btn op-btn-red" style="padding:2px 8px;font-size:11px" onclick="ownerKickFromVoice('${sid}','${ch.id}','${uname}')">طرد</button>
+        </div>`;}).join('')}
+      </div>
+    </div>`).join('')}
+    <div class="op-section-title" style="margin-top:20px">كل القنوات الصوتية (${voiceChannels.length})</div>
+    ${voiceChannels.map(({sid,sv,ch,users})=>`
+    <div class="op-user-row">
+      <span style="font-size:18px">🔊</span>
+      <div class="op-uinfo">
+        <div class="op-uname">${esc(ch.name)}</div>
+        <div class="op-utag">${esc(sv.name)} · ${users.length>0?users.length+' مستخدم':'فارغة'}</div>
+      </div>
+    </div>`).join('')}`;
+}
+function ownerClearVoice(sid,cid){
+  if(!DB.servers[sid]?.voiceRooms?.[cid]) return;
+  delete DB.servers[sid].voiceRooms[cid]; saveDB();
+  toast('🔇 تم طرد الجميع من الكالم');
+  ownerTab('voice',document.querySelector('.op-tab.active'));
+}
+function ownerKickFromVoice(sid,cid,uname){
+  if(!DB.servers[sid]?.voiceRooms?.[cid]?.[uname]) return;
+  delete DB.servers[sid].voiceRooms[cid][uname]; saveDB();
+  toast('👟 تم طرد '+DB.users[uname]?.display+' من الكالم');
+  ownerTab('voice',document.querySelector('.op-tab.active'));
+}
