@@ -340,11 +340,17 @@ body {
 }
 
 /* ═══════════════════════════════════════════
-   APP LAYOUT
+   APP LAYOUT - FIXED DIRECTION
    ═══════════════════════════════════════════ */
 #app {
   display: flex; height: 100vh; overflow: hidden;
+  flex-direction: row; /* LTR: rail → channels → content → members */
 }
+/* Server rail stays on LEFT side regardless of RTL */
+.server-rail { order: 1; }
+.channel-panel { order: 2; border-left: none; border-right: 1px solid var(--border); }
+.content-area  { order: 3; }
+.members-panel { order: 4; border-left: none; border-right: 1px solid var(--border); }
 
 /* Mobile overlay */
 .mobile-overlay {
@@ -368,8 +374,8 @@ body {
 .server-pip {
   width: 4px; height: 8px;
   background: var(--text-1);
-  border-radius: 0 4px 4px 0;
-  position: absolute; right: -4px; top: 50%;
+  border-radius: 4px 0 0 4px;
+  position: absolute; left: -4px; top: 50%;
   transform: translateY(-50%);
   transition: height .2s;
 }
@@ -1318,7 +1324,7 @@ tbody tr:hover td { background: var(--bg-hover); }
 .owner-panel-fab {
   position: fixed;
   top: 12px;
-  left: 12px;
+  left: 82px; /* next to server rail */
   z-index: 9999;
   background: linear-gradient(135deg, #f5c518, #e67e22);
   color: #000;
@@ -1484,3 +1490,46 @@ tbody tr:hover td { background: var(--bg-hover); }
 .tag-discount{background:rgba(250,166,26,.9);color:#000;}
 .tag-orbs{background:linear-gradient(135deg,#9b59b6,#3498db);color:#fff;}
 .btn-success{background:var(--green)!important;color:#fff!important;border:none!important;}
+
+/* ═══════════════════════════════════════════
+   RTL TEXT FIX - Keep layout LTR, text RTL
+   ═══════════════════════════════════════════ */
+/* All text-bearing elements inside app = RTL */
+#app .srv-header,
+#app .ch-scroll,
+#app .ch-item,
+#app .ch-cat,
+#app .user-bar,
+#app .u-info,
+#app .msgs-inner,
+#app .msg-body,
+#app .msg-meta,
+#app .msg-text,
+#app .chat-input-wrap,
+#app .chat-input,
+#app .chat-header,
+#app .ch-header-info,
+#app .members-panel,
+#app .m-item,
+#app #homeScreen,
+#app #dmScreen,
+#app #voiceScreen,
+#app .home-title,
+#app .home-sub,
+#app .home-actions,
+#app .home-features,
+#app .admin-nav-panel,
+#app .admin-body,
+#app .op-header,
+#app .op-body,
+#app .op-tabs,
+#app .shop-panel,
+.modal,
+.modal-overlay .modal { direction: rtl; text-align: right; }
+
+/* Input fields - RTL */
+input, textarea, select { direction: rtl; text-align: right; font-family: var(--font-main); }
+
+/* Flex rows inside RTL sections */
+#app .msg-group { direction: rtl; display: flex; flex-direction: row; }
+#app .msg-group.own { flex-direction: row-reverse; }
