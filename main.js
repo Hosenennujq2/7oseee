@@ -100,7 +100,7 @@ function processMsg(t){
 function switchAuthTab(tab){document.getElementById('loginForm').classList.toggle('hidden',tab!=='login');document.getElementById('registerForm').classList.toggle('hidden',tab!=='register');document.querySelectorAll('.auth-tab').forEach((el,i)=>el.classList.toggle('active',(tab==='login'&&i===0)||(tab==='register'&&i===1)));}
 function doGoogleLogin(){const fb=window._firebase;if(!fb?.ready){toast('⚠️ Firebase غير مفعّل','err');return;}const provider=new fb.GoogleAuthProvider();fb.signInWithPopup(fb.auth,provider).then(r=>handleFirebaseUser(r.user)).catch(()=>toast('❌ فشل تسجيل الدخول','err'));}
 async function handleFirebaseUser(fu){const username='g_'+fu.uid.slice(0,8);if(!DB.users[username])DB.users[username]={password:fu.uid,display:fu.displayName||username,tag:'#GOOG',role:'user',avatar:'😀',status:'online',joinDate:new Date().toISOString(),email:fu.email||'',photoURL:fu.photoURL||'',banner:'',bannerColor:'#5865f2',badges:['early'],nitro:false,boosts:0,friends:[],customStatus:''};DB.users[username].photoURL=fu.photoURL||'';if(!DB.users[username].friends)DB.users[username].friends=[];saveDB();me={username,...DB.users[username]};bootApp();}
-function doLogin(){const u=document.getElementById('loginUser').value.trim().toLowerCase();const p=document.getElementById('loginPass').value;const errEl=document.getElementById('loginError');const user=DB.users[u];if(!user||user.password!==p){showErr(errEl,'❌ اسم المستخدم أو كلمة المرور غلط');document.getElementById('loginPass').value='';return;}errEl.style.display='none';DB.users[u].status='online';saveDB();me={username:u,...DB.users[u]};addLog(null,'تسجيل دخول',u);bootApp();}
+function doLogin(){const u=document.getElementById('loginUser').value.trim().toLowerCase();const p=document.getElementById('loginPass').value;const errEl=document.getElementById('loginError');const user=DB.users[u];if(!user||user.password!==p){showErr(errEl,'❌ اسم المستخدم أو كلمة المرور غلط');document.getElementById('loginPass').value='';return;}errEl.style.display='none';DB.users[u].status='online';saveDB();me={username:u,...DB.users[u]};addLog(null,'تسجيل دخول',u);logLogin(u);bootApp();}
 function doRegister(){const u=document.getElementById('regUser').value.trim().toLowerCase();const disp=document.getElementById('regDisplay').value.trim();const email=document.getElementById('regEmail').value.trim();const p=document.getElementById('regPass').value;const errEl=document.getElementById('regError');if(!u||!disp||!p){showErr(errEl,'❌ يرجى ملء جميع الحقول');return;}if(u.length<3){showErr(errEl,'❌ اسم المستخدم قصير');return;}if(!/^[a-z0-9_]+$/.test(u)){showErr(errEl,'❌ أحرف إنجليزية وأرقام فقط');return;}if(p.length<6){showErr(errEl,'❌ كلمة المرور قصيرة');return;}if(DB.users[u]){showErr(errEl,'❌ اسم المستخدم مستخدم');return;}const tag='#'+String(Object.keys(DB.users).length+1).padStart(4,'0');DB.users[u]={password:p,display:disp,tag,email,role:'user',avatar:'😀',status:'online',joinDate:new Date().toISOString(),theme:'dark',bio:'',banner:'',bannerColor:'#5865f2',badges:['early'],nitro:false,boosts:0,friends:[],customStatus:''};saveDB();me={username:u,...DB.users[u]};addLog(null,'تسجيل حساب',u);bootApp();}
 function showErr(el,msg){el.textContent=msg;el.style.display='block';}
 function doLogout(){leaveVoiceChannel();if(me&&DB.users[me.username])DB.users[me.username].status='offline';saveDB();const fb=window._firebase;if(fb?.ready&&fb.auth?.currentUser)fb.signOut(fb.auth).catch(()=>{});me=null;activeServer=null;activeChannel=null;activeDM=null;document.getElementById('app').classList.add('hidden');document.getElementById('authPage').classList.remove('hidden');}
@@ -111,7 +111,7 @@ function togglePass(inputId,btn){const el=document.getElementById(inputId);if(!e
 /* ═══════════════════════════════════════════════
    BOOT
 ═══════════════════════════════════════════════ */
-function bootApp(){document.getElementById('authPage').classList.add('hidden');document.getElementById('app').classList.remove('hidden');applyTheme(DB.users[me.username]?.theme||'dark');if(DB.users[me.username]?.fontSize)document.body.style.fontSize=DB.users[me.username].fontSize+'px';refreshUserBar();renderRail();openHome();renderOwnerPanel();toast('أهلاً، '+(DB.users[me.username]?.display||me.username)+' 👋');checkInviteUrl();}
+function bootApp(){document.getElementById('authPage').classList.add('hidden');document.getElementById('app').classList.remove('hidden');applyTheme(DB.users[me.username]?.theme||'dark');loadAccentColor();setTimeout(loadChatBg,300);if(DB.users[me.username]?.fontSize)document.body.style.fontSize=DB.users[me.username].fontSize+'px';refreshUserBar();renderRail();openHome();renderOwnerPanel();toast('أهلاً، '+(DB.users[me.username]?.display||me.username)+' 👋');checkInviteUrl();}
 function refreshUserBar(){const u=DB.users[me.username];if(!u)return;document.getElementById('barName').textContent=u.display;document.getElementById('barTag').textContent=u.tag;const av=document.getElementById('barAvatar');av.style.background=avatarColor(me.username);if(u.photoURL)av.innerHTML=`<img src="${u.photoURL}" style="width:100%;height:100%;border-radius:50%;object-fit:cover"><div class="u-status ${u.status||'online'}" id="barStatus"></div>`;else av.innerHTML=`<span>${esc((u.avatar||u.display[0]).slice(0,2))}</span><div class="u-status ${u.status||'online'}" id="barStatus"></div>`;}
 function applyTheme(t){document.body.classList.toggle('theme-light',t==='light');document.body.classList.toggle('theme-dark',t!=='light');}
 function statusLabel(s){return{online:'🟢 متاح',idle:'🟡 بعيد',dnd:'🔴 لا تزعج',offline:'⚫ غير متاح'}[s]||'⚫ غير متاح';}
@@ -399,7 +399,17 @@ function renderDMMessages(uname){
     const u=DB.users[msg.user]||{display:msg.user};const isOwn=msg.user===me.username;
     let reactHtml='';
     if(msg.reactions&&Object.keys(msg.reactions).length){reactHtml='<div class="msg-reactions">';Object.entries(msg.reactions).forEach(([em,users])=>{const mine=users.includes(me.username);reactHtml+=`<div class="reaction${mine?' mine':''}" onclick="toggleDMReact('${uname}','${msg.id}','${em}')">${em} ${users.length}</div>`;});reactHtml+='</div>';}
-    const contentHtml=msg.imageUrl?`<img class="msg-image" src="${msg.imageUrl}" alt="صورة" onclick="openImageModal('${msg.imageUrl}')">`:`<div class="msg-text">${processMsg(msg.text||'')}</div>`;
+    let contentHtml='';
+    if(msg.type==='poll'){
+      const totalVotes=msg.options.reduce((a,o)=>a+o.votes.length,0);
+      contentHtml=`<div class="poll-box"><div class="poll-q">${esc(msg.question)}</div>${msg.options.map((o,i)=>{const pct=totalVotes?Math.round(o.votes.length/totalVotes*100):0;const voted=o.votes.includes(me.username);return `<div class="poll-opt${voted?' voted':''}" onclick="votePoll('${msg.id}',${i})"><div class="poll-fill" style="width:${pct}%"></div><span class="poll-label">${esc(o.text)}</span><span class="poll-pct">${pct}%</span></div>`;}).join('')}<div class="poll-total">${totalVotes} أصوات</div></div>`;
+    }else if(msg.imageUrl){
+      contentHtml=`<img class="msg-image" src="${msg.imageUrl}" alt="صورة" onclick="openImageModal('${msg.imageUrl}')">`;
+    }else if(msg.isSticker){
+      contentHtml=`<div class="msg-sticker">${processMsg(msg.text||'')}</div>`;
+    }else{
+      contentHtml=`<div class="msg-text">${processMsgWithMentions(msg.text||'',activeServer)}</div>`;
+    }
     html+=`<div class="msg-group${isOwn?' own':''}" id="dmmsg-${msg.id}">
       <div class="msg-av" style="background:${avatarColor(msg.user)}">${u.photoURL?`<img src="${u.photoURL}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`:esc((u.avatar||u.display[0]).slice(0,2))}</div>
       <div class="msg-body">
@@ -529,7 +539,17 @@ function renderMessages(){
     const u=DB.users[msg.user]||{display:msg.user,role:'user'};const r=u.role||'user';const isOwn=msg.user===me.username;
     let replyHtml='';if(msg.replyTo){const rm=ch.messages.find(m=>m.id===msg.replyTo);if(rm){const ru=DB.users[rm.user]||{display:rm.user};replyHtml=`<div class="msg-reply-ref" onclick="scrollToMsg('${msg.replyTo}')">↩ <strong>${esc(ru.display)}</strong>: ${esc((rm.text||'').slice(0,60))}</div>`;}}
     let reactHtml='';if(msg.reactions&&Object.keys(msg.reactions).length){reactHtml='<div class="msg-reactions">';Object.entries(msg.reactions).forEach(([em,users])=>{const mine=users.includes(me.username);reactHtml+=`<div class="reaction${mine?' mine':''}" onclick="toggleReaction('${msg.id}','${em}')">${em} ${users.length}</div>`;});reactHtml+='</div>';}
-    const contentHtml=msg.imageUrl?`<img class="msg-image" src="${msg.imageUrl}" alt="صورة" onclick="openImageModal('${msg.imageUrl}')">`:`<div class="msg-text">${processMsg(msg.text||'')}</div>`;
+    let contentHtml='';
+    if(msg.type==='poll'){
+      const totalVotes=msg.options.reduce((a,o)=>a+o.votes.length,0);
+      contentHtml=`<div class="poll-box"><div class="poll-q">${esc(msg.question)}</div>${msg.options.map((o,i)=>{const pct=totalVotes?Math.round(o.votes.length/totalVotes*100):0;const voted=o.votes.includes(me.username);return `<div class="poll-opt${voted?' voted':''}" onclick="votePoll('${msg.id}',${i})"><div class="poll-fill" style="width:${pct}%"></div><span class="poll-label">${esc(o.text)}</span><span class="poll-pct">${pct}%</span></div>`;}).join('')}<div class="poll-total">${totalVotes} أصوات</div></div>`;
+    }else if(msg.imageUrl){
+      contentHtml=`<img class="msg-image" src="${msg.imageUrl}" alt="صورة" onclick="openImageModal('${msg.imageUrl}')">`;
+    }else if(msg.isSticker){
+      contentHtml=`<div class="msg-sticker">${processMsg(msg.text||'')}</div>`;
+    }else{
+      contentHtml=`<div class="msg-text">${processMsgWithMentions(msg.text||'',activeServer)}</div>`;
+    }
     const nameCls=hasNitro(msg.user)?`msg-author rc-${roleCls(r)} nitro-name`:`msg-author rc-${roleCls(r)}`;
     html+=`<div class="msg-group${isOwn?' own':''}" id="msg-${msg.id}" data-msgid="${msg.id}">
       <div class="msg-av" style="background:${avatarColor(msg.user)}" onclick="showProfile('${msg.user}')">${u.photoURL?`<img src="${u.photoURL}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`:esc((u.avatar||u.display[0]).slice(0,2))}</div>
@@ -540,7 +560,7 @@ function renderMessages(){
       <div class="msg-actions">
         <button class="msg-act-btn" onclick="setReply('${msg.id}')" title="رد">↩</button>
         <button class="msg-act-btn" onclick="addReactionPicker('${msg.id}')" title="إيموجي">😊</button>
-        ${isOwn||isStaff(myServerRole(activeServer))?`<button class="msg-act-btn" onclick="deleteMsg('${msg.id}')">🗑️</button>`:''}
+        ${isOwn?`<button class="msg-act-btn" onclick="editMsg('${msg.id}')" title="تعديل">✏️</button>`:''}${isOwn||isStaff(myServerRole(activeServer))?`<button class="msg-act-btn" onclick="deleteMsg('${msg.id}')">🗑️</button>`:''}
         ${isStaff(myServerRole(activeServer))?`<button class="msg-act-btn" onclick="pinMsg('${msg.id}')">📌</button>`:''}
       </div>
     </div>`;
@@ -548,8 +568,8 @@ function renderMessages(){
   inner.innerHTML=html;
   const wrap=document.getElementById('msgsWrap');wrap.scrollTop=wrap.scrollHeight;
 }
-function handleChatKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();return;}const ta=e.target;ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,120)+'px';}
-function sendMsg(){const input=document.getElementById('chatInputEl');const text=input.value.trim();if(!text||!activeServer||!activeChannel)return;const sv=DB.servers[activeServer];const ch=sv?.channels.find(c=>c.id===activeChannel);if(!ch)return;if(!ch.messages)ch.messages=[];const msg={id:uid(),user:me.username,text,time:new Date().toISOString(),reactions:{}};if(replyTo){msg.replyTo=replyTo;clearReply();}ch.messages.push(msg);if(ch.messages.length>1000)ch.messages.shift();saveDB();input.value='';input.style.height='auto';renderMessages();}
+function handleChatKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();return;}const ta=e.target;ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,120)+'px';handleTypingIndicator();}
+function sendMsg(){const input=document.getElementById('chatInputEl');const text=input.value.trim();if(!text||!activeServer||!activeChannel)return;if(!checkSlowMode(activeServer,activeChannel))return;const sv=DB.servers[activeServer];const ch=sv?.channels.find(c=>c.id===activeChannel);if(!ch)return;if(!ch.messages)ch.messages=[];const msg={id:uid(),user:me.username,text,time:new Date().toISOString(),reactions:{}};checkMentions(text,activeServer);if(replyTo){msg.replyTo=replyTo;clearReply();}ch.messages.push(msg);if(ch.messages.length>1000)ch.messages.shift();saveDB();input.value='';input.style.height='auto';renderMessages();}
 function setReply(msgId){const sv=DB.servers[activeServer];const ch=sv?.channels.find(c=>c.id===activeChannel);if(!ch)return;const msg=ch.messages.find(m=>m.id===msgId);if(!msg)return;replyTo=msgId;const preview=document.getElementById('replyPreview');const u=DB.users[msg.user]||{display:msg.user};document.getElementById('replyPreviewText').textContent='الرد على '+u.display+': '+(msg.text||'').slice(0,50);preview.classList.remove('hidden');document.getElementById('chatInputEl').focus();}
 function clearReply(){replyTo=null;document.getElementById('replyPreview')?.classList.add('hidden');}
 function deleteMsg(msgId){const sv=DB.servers[activeServer];const ch=sv?.channels.find(c=>c.id===activeChannel);if(!ch)return;const idx=ch.messages.findIndex(m=>m.id===msgId);if(idx===-1)return;const msg=ch.messages[idx];if(msg.user!==me.username&&!isStaff(myServerRole(activeServer)))return;ch.messages.splice(idx,1);saveDB();renderMessages();toast('🗑️ تم حذف الرسالة');}
@@ -951,6 +971,31 @@ function renderSettings(tab){
         <input type="range" id="fontSizeRange" min="13" max="18" value="${u.fontSize||15}" oninput="document.getElementById('fontPreview').style.fontSize=this.value+'px'">
         <div style="font-size:13px;color:var(--text-3);margin-top:4px">معاينة: <span id="fontPreview" style="font-size:${u.fontSize||15}px">هذا حجم الخط</span></div>
       </div>`;
+
+  }else if(tab==='themes'){
+    const cur=DB.users[me.username]?.accentColor||'#5865f2';
+    con.innerHTML=`<div class="form-group"><label>لون التطبيق</label><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px">${Object.entries(ACCENT_THEMES).map(([k,t])=>`<div onclick="applyAccent('${t.accent}')" style="background:${t.accent};border-radius:10px;padding:14px 6px;text-align:center;cursor:pointer;font-size:12px;font-weight:700;color:#fff;border:3px solid ${cur===t.accent?'#fff':'transparent'}">${t.name}</div>`).join('')}</div></div>
+      <div class="form-group"><label>خلفية الشات</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="openChatBgUpload()">📁 رفع صورة</button>
+          <button class="btn btn-ghost btn-sm" onclick="setChatBg('');toast('تم إزالة الخلفية')">🗑️ إزالة</button>
+        </div>
+      </div>
+      <div class="form-group"><label><input type="checkbox" id="focusModeCheck" ${focusMode?'checked':''}  onchange="toggleFocusMode()"> وضع التركيز</label></div>`;
+  }else if(tab==='security2'){
+    const u=DB.users[me.username];
+    con.innerHTML=`<div style="margin-bottom:16px">
+      <div style="font-weight:700;margin-bottom:8px">🔐 التحقق بخطوتين (2FA)</div>
+      <div style="color:var(--text-3);font-size:13px;margin-bottom:12px">يضيف طبقة حماية إضافية لحسابك</div>
+      ${u.twoFAEnabled
+        ?`<div style="background:rgba(59,165,92,.15);border:1px solid var(--green);border-radius:10px;padding:12px;margin-bottom:12px"><div style="color:var(--green);font-weight:700">✅ التحقق بخطوتين مفعّل</div></div>
+           <button class="btn btn-danger btn-sm" onclick="disable2FA()">🔓 تعطيل 2FA</button>`
+        :`<button class="btn btn-accent" onclick="setup2FA()">🔐 تفعيل 2FA</button>`}
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:16px">
+      <div style="font-weight:700;margin-bottom:8px">📱 سجل تسجيل الدخول</div>
+      <button class="btn btn-ghost" onclick="openLoginLogs()">🔍 عرض السجل</button>
+    </div>`;
   }else if(tab==='notifications'){
     const n=u.notifications||{};
     con.innerHTML=`
@@ -1668,7 +1713,17 @@ function renderGroupMessages(gid){
     const u=DB.users[msg.user]||{display:msg.user};const isOwn=msg.user===me.username;
     let reactHtml='';
     if(msg.reactions&&Object.keys(msg.reactions).length){reactHtml='<div class="msg-reactions">';Object.entries(msg.reactions).forEach(([em,users])=>{const mine=users.includes(me.username);reactHtml+=`<div class="reaction${mine?' mine':''}" onclick="toggleGrpReact('${gid}','${msg.id}','${em}')">${em} ${users.length}</div>`;});reactHtml+='</div>';}
-    const contentHtml=msg.imageUrl?`<img class="msg-image" src="${msg.imageUrl}" alt="صورة" onclick="openImageModal('${msg.imageUrl}')">`:`<div class="msg-text">${processMsg(msg.text||'')}</div>`;
+    let contentHtml='';
+    if(msg.type==='poll'){
+      const totalVotes=msg.options.reduce((a,o)=>a+o.votes.length,0);
+      contentHtml=`<div class="poll-box"><div class="poll-q">${esc(msg.question)}</div>${msg.options.map((o,i)=>{const pct=totalVotes?Math.round(o.votes.length/totalVotes*100):0;const voted=o.votes.includes(me.username);return `<div class="poll-opt${voted?' voted':''}" onclick="votePoll('${msg.id}',${i})"><div class="poll-fill" style="width:${pct}%"></div><span class="poll-label">${esc(o.text)}</span><span class="poll-pct">${pct}%</span></div>`;}).join('')}<div class="poll-total">${totalVotes} أصوات</div></div>`;
+    }else if(msg.imageUrl){
+      contentHtml=`<img class="msg-image" src="${msg.imageUrl}" alt="صورة" onclick="openImageModal('${msg.imageUrl}')">`;
+    }else if(msg.isSticker){
+      contentHtml=`<div class="msg-sticker">${processMsg(msg.text||'')}</div>`;
+    }else{
+      contentHtml=`<div class="msg-text">${processMsgWithMentions(msg.text||'',activeServer)}</div>`;
+    }
     html+=`<div class="msg-group${isOwn?' own':''}" id="grpmsg-${msg.id}">
       <div class="msg-av" style="background:${avatarColor(msg.user)}">${u.photoURL?`<img src="${u.photoURL}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`:esc((u.avatar||u.display[0]).slice(0,2))}</div>
       <div class="msg-body">
@@ -1888,3 +1943,397 @@ function renderVoiceSideList(vu){
     </div>`;
   }).join('');
 }
+
+/* ═══ MENTIONS ═══ */
+function processMsgWithMentions(t,sid){
+  let s=esc(t);
+  s=s.replace(/```([\s\S]*?)```/g,'<pre class="msg-code-block"><code>$1</code></pre>');
+  s=s.replace(/`([^`]+)`/g,'<code class="msg-code">$1</code>');
+  s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  s=s.replace(/\*(.+?)\*/g,'<em>$1</em>');
+  s=s.replace(/~~(.+?)~~/g,'<del>$1</del>');
+  s=s.replace(/@(\w+)/g,(m,uname)=>{
+    const u=DB.users[uname];if(!u)return m;
+    return `<span class="mention" onclick="showProfile('${uname}')">@${esc(u.display||uname)}</span>`;
+  });
+  s=s.replace(/https?:\/\/[^\s<>"]+/gi,url=>`<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`);
+  return s;
+}
+function checkMentions(text,sid){
+  const matches=text.match(/@(\w+)/g)||[];
+  matches.forEach(m=>{
+    const uname=m.slice(1);
+    if(uname===me.username)return;
+    if(!DB.users[uname])return;
+    addNotif(uname,'mention','📢 '+DB.users[me.username]?.display+' ذكرك',text.slice(0,80),{sid,cid:activeChannel});
+    sendBrowserNotif(DB.users[me.username]?.display+' ذكرك',text.slice(0,60));
+  });
+}
+
+/* ═══ NOTIFICATION SYSTEM ═══ */
+function addNotif(toUser,type,title,body,meta={}){
+  if(!DB.notifs)DB.notifs={};
+  if(!DB.notifs[toUser])DB.notifs[toUser]=[];
+  DB.notifs[toUser].unshift({id:uid(),type,title,body,meta,time:new Date().toISOString(),read:false});
+  if(DB.notifs[toUser].length>50)DB.notifs[toUser].pop();
+  saveDB();
+  if(toUser===me.username)updateNotifBadge();
+}
+function getUnreadNotifs(){if(!DB.notifs||!DB.notifs[me.username])return [];return DB.notifs[me.username].filter(n=>!n.read);}
+function updateNotifBadge(){
+  const count=getUnreadNotifs().length;
+  let btn=document.getElementById('notifBtn');
+  if(!btn)return;
+  let badge=btn.querySelector('.notif-count');
+  if(count>0){if(!badge){badge=document.createElement('span');badge.className='notif-count';btn.appendChild(badge);}badge.textContent=count>9?'9+':count;}
+  else if(badge)badge.remove();
+}
+function sendBrowserNotif(title,body){
+  if(Notification.permission==='granted'){new Notification(title,{body,icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🎮</text></svg>'});}
+  else if(Notification.permission!=='denied')Notification.requestPermission();
+}
+function openNotifPanel(){
+  const ex=document.getElementById('notifPanel');if(ex){ex.remove();return;}
+  if(!DB.notifs)DB.notifs={};
+  const notifs=DB.notifs[me.username]||[];
+  notifs.forEach(n=>n.read=true);saveDB();updateNotifBadge();
+  const panel=document.createElement('div');panel.id='notifPanel';panel.className='notif-panel';
+  panel.innerHTML=`<div class="notif-header"><span>🔔 الإشعارات</span><button onclick="document.getElementById('notifPanel')?.remove()">✕</button></div>
+    <div class="notif-list">
+      ${notifs.length===0?'<div class="empty" style="padding:30px"><p>لا توجد إشعارات</p></div>':
+      notifs.slice(0,30).map(n=>`<div class="notif-item${n.read?'':' unread'}" onclick="gotoNotif('${JSON.stringify(n.meta).replace(/'/g,"\\'")}')">
+        <div class="notif-title">${esc(n.title)}</div>
+        <div class="notif-body">${esc(n.body)}</div>
+        <div class="notif-time">${fmtRel(n.time)}</div>
+      </div>`).join('')}
+    </div>`;
+  document.getElementById('app').appendChild(panel);
+  setTimeout(()=>document.addEventListener('click',e=>{if(!panel.contains(e.target)&&e.target.id!=='notifBtn')panel.remove();},{once:true}),100);
+}
+function gotoNotif(metaStr){
+  try{const meta=JSON.parse(metaStr);document.getElementById('notifPanel')?.remove();if(meta.sid&&meta.cid){activeServer=meta.sid;openChannel(meta.sid,meta.cid);}}catch(e){}
+}
+
+/* ═══ EDIT MESSAGE ═══ */
+function editMsg(msgId){
+  const sv=DB.servers[activeServer];const ch=sv?.channels.find(c=>c.id===activeChannel);if(!ch)return;
+  const msg=ch.messages.find(m=>m.id===msgId);if(!msg||msg.user!==me.username)return;
+  const el=document.getElementById('msg-'+msgId);if(!el)return;
+  const textDiv=el.querySelector('.msg-text');if(!textDiv)return;
+  const orig=msg.text;
+  textDiv.innerHTML=`<div class="edit-wrap"><textarea class="edit-input" id="edit-${msgId}">${esc(orig)}</textarea><div class="edit-actions"><button class="btn btn-ghost btn-sm" onclick="cancelEdit('${msgId}','${esc(orig)}')">إلغاء</button><button class="btn btn-accent btn-sm" onclick="saveEdit('${msgId}')">💾 حفظ</button></div></div>`;
+  const ta=document.getElementById('edit-'+msgId);if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}
+}
+function saveEdit(msgId){
+  const sv=DB.servers[activeServer];const ch=sv?.channels.find(c=>c.id===activeChannel);if(!ch)return;
+  const msg=ch.messages.find(m=>m.id===msgId);if(!msg)return;
+  const ta=document.getElementById('edit-'+msgId);if(!ta)return;
+  const newText=ta.value.trim();if(!newText)return;
+  msg.text=newText;msg.edited=true;msg.editedAt=new Date().toISOString();
+  saveDB();renderMessages();toast('✅ تم التعديل');
+}
+function cancelEdit(msgId,orig){renderMessages();}
+
+/* ═══ TYPING INDICATOR ═══ */
+let typingTimer=null;
+function handleTypingIndicator(){
+  if(!activeServer||!activeChannel)return;
+  if(!DB.typing)DB.typing={};
+  if(!DB.typing[activeChannel])DB.typing[activeChannel]={};
+  DB.typing[activeChannel][me.username]=Date.now();
+  saveDB();
+  clearTimeout(typingTimer);
+  typingTimer=setTimeout(()=>{
+    if(DB.typing?.[activeChannel]?.[me.username]){delete DB.typing[activeChannel][me.username];saveDB();}
+  },3000);
+  updateTypingDisplay();
+}
+function updateTypingDisplay(){
+  if(!DB.typing||!activeChannel)return;
+  const el=document.getElementById('typingIndicator');if(!el)return;
+  const typers=Object.entries(DB.typing[activeChannel]||{})
+    .filter(([u,t])=>u!==me.username&&Date.now()-t<4000)
+    .map(([u])=>DB.users[u]?.display||u);
+  if(!typers.length){el.classList.add('hidden');return;}
+  el.classList.remove('hidden');
+  document.getElementById('typingText').textContent=typers.join('، ')+(typers.length===1?' يكتب...':' يكتبون...');
+}
+
+/* ═══ ACCENT THEMES ═══ */
+const ACCENT_THEMES={
+  blue:{accent:'#5865f2',name:'أزرق 💙'},
+  green:{accent:'#3ba55c',name:'أخضر 💚'},
+  red:{accent:'#ed4245',name:'أحمر ❤️'},
+  pink:{accent:'#ff73fa',name:'وردي 🌸'},
+  orange:{accent:'#faa61a',name:'برتقالي 🧡'},
+  purple:{accent:'#9b59b6',name:'بنفسجي 💜'},
+  cyan:{accent:'#00b4d8',name:'سماوي 🩵'},
+  yellow:{accent:'#f5c518',name:'ذهبي 💛'},
+};
+function applyAccent(color){
+  document.documentElement.style.setProperty('--accent',color);
+  document.documentElement.style.setProperty('--accent-hover',color+'cc');
+  DB.users[me.username].accentColor=color;saveDB();
+}
+function loadAccentColor(){const c=DB.users[me.username]?.accentColor;if(c)applyAccent(c);}
+
+/* ═══ CHAT BACKGROUND ═══ */
+function setChatBg(img){
+  const inner=document.getElementById('msgsWrap');
+  if(!inner)return;
+  inner.style.backgroundImage=img?`url(${img})`:'none';
+  inner.style.backgroundSize='cover';
+  inner.style.backgroundPosition='center';
+  DB.users[me.username].chatBg=img||'';saveDB();
+}
+function loadChatBg(){
+  const bg=DB.users[me.username]?.chatBg;
+  if(bg){const w=document.getElementById('msgsWrap');if(w){w.style.backgroundImage=`url(${bg})`;w.style.backgroundSize='cover';}}
+}
+
+/* ═══ 2FA SYSTEM ═══ */
+function setup2FA(){
+  const u=DB.users[me.username];
+  const code=Math.floor(100000+Math.random()*900000).toString();
+  u.twoFASecret=code;u.twoFAEnabled=false;saveDB();
+  const ov=document.createElement('div');ov.className='modal-overlay';ov.id='twoFAOv';
+  ov.innerHTML=`<div class="modal"><h2>🔐 تحقق بخطوتين</h2>
+    <p style="color:var(--text-3);margin-bottom:16px">احفظ هذا الكود — ستحتاجه عند كل تسجيل دخول</p>
+    <div style="background:var(--bg-input);border-radius:12px;padding:20px;text-align:center;margin-bottom:16px">
+      <div style="font-size:32px;font-weight:900;letter-spacing:8px;color:var(--accent);font-family:monospace">${code}</div>
+    </div>
+    <div class="form-group"><label>أدخل الكود للتأكيد</label><input id="verify2FAInput" type="text" placeholder="أدخل الكود المكوّن من 6 أرقام" maxlength="6" style="text-align:center;letter-spacing:6px;font-size:20px;font-family:monospace"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('twoFAOv').remove()">إغلاق</button>
+      <button class="btn btn-accent" onclick="confirm2FA('${code}')">✅ تفعيل</button>
+    </div>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});document.body.appendChild(ov);
+}
+function confirm2FA(secret){
+  const input=document.getElementById('verify2FAInput')?.value.trim();
+  if(input!==secret){toast('❌ الكود غير صحيح','err');return;}
+  DB.users[me.username].twoFAEnabled=true;saveDB();
+  document.getElementById('twoFAOv')?.remove();toast('✅ تم تفعيل التحقق بخطوتين!');
+}
+function disable2FA(){
+  DB.users[me.username].twoFAEnabled=false;delete DB.users[me.username].twoFASecret;
+  saveDB();toast('🔓 تم تعطيل التحقق بخطوتين');
+}
+
+/* ═══ SLOW MODE ═══ */
+function setSlowMode(sid,cid,seconds){
+  const sv=DB.servers[sid];const ch=sv?.channels.find(c=>c.id===cid);if(!ch)return;
+  ch.slowMode=seconds;saveDB();
+  toast(seconds?`⏱️ Slow Mode: ${seconds} ثانية`:'⏱️ تم إيقاف Slow Mode');
+}
+function checkSlowMode(sid,cid){
+  const sv=DB.servers[sid];const ch=sv?.channels.find(c=>c.id===cid);if(!ch?.slowMode)return true;
+  const lastMsg=[...(ch.messages||[])].reverse().find(m=>m.user===me.username);
+  if(!lastMsg)return true;
+  const diff=(Date.now()-new Date(lastMsg.time).getTime())/1000;
+  if(diff<ch.slowMode){toast(`⏱️ انتظر ${Math.ceil(ch.slowMode-diff)} ثانية`,'err');return false;}
+  return true;
+}
+
+/* ═══ WELCOME CHANNEL ═══ */
+function sendWelcomeMsg(sid,uname){
+  const sv=DB.servers[sid];if(!sv?.welcomeChannel)return;
+  const ch=sv.channels.find(c=>c.id===sv.welcomeChannel);if(!ch)return;
+  if(!ch.messages)ch.messages=[];
+  const u=DB.users[uname];
+  ch.messages.push({id:uid(),type:'system',text:`🎉 أهلاً بـ ${u?.display||uname} في ${sv.name}!`,time:new Date().toISOString()});
+  saveDB();
+}
+
+/* ═══ VERIFY SYSTEM ═══ */
+function openVerifyModal(sid){
+  const sv=DB.servers[sid];if(!sv?.verifyText)return;
+  const ov=document.createElement('div');ov.className='modal-overlay';ov.id='verifyOv';
+  ov.innerHTML=`<div class="modal"><h2>📋 قوانين ${esc(sv.name)}</h2>
+    <div style="background:var(--bg-input);border-radius:10px;padding:16px;margin-bottom:16px;max-height:200px;overflow-y:auto;white-space:pre-wrap;color:var(--text-2);font-size:13px">${esc(sv.verifyText)}</div>
+    <div class="form-group"><label><input type="checkbox" id="agreeCheck"> أوافق على القوانين والشروط</label></div>
+    <div class="modal-footer">
+      <button class="btn btn-accent" onclick="confirmVerify('${sid}')">✅ تأكيد</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+function confirmVerify(sid){
+  if(!document.getElementById('agreeCheck')?.checked){toast('❌ يجب الموافقة على القوانين','err');return;}
+  const sv=DB.servers[sid];if(!sv.members[me.username])return;
+  sv.members[me.username].verified=true;saveDB();
+  document.getElementById('verifyOv')?.remove();toast('✅ تم التحقق!');
+}
+
+/* ═══ SERVER STATS ═══ */
+function openServerStats(sid){
+  const sv=DB.servers[sid];if(!sv)return;
+  const msgs=sv.channels.reduce((a,c)=>a+(c.messages?.length||0),0);
+  const byUser={};
+  sv.channels.forEach(ch=>(ch.messages||[]).forEach(m=>{byUser[m.user]=(byUser[m.user]||0)+1;}));
+  const top=Object.entries(byUser).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const ov=document.createElement('div');ov.className='modal-overlay';ov.id='statsOv';
+  ov.innerHTML=`<div class="modal"><h2>📊 إحصائيات ${esc(sv.name)}</h2>
+    <div class="stats-grid" style="margin-bottom:20px">
+      <div class="stat-card"><div class="s-icon-lg">👥</div><div class="s-num">${Object.keys(sv.members).length}</div><div class="s-lbl">الأعضاء</div></div>
+      <div class="stat-card"><div class="s-icon-lg">💬</div><div class="s-num">${msgs}</div><div class="s-lbl">الرسائل</div></div>
+      <div class="stat-card"><div class="s-icon-lg">📢</div><div class="s-num">${sv.channels.length}</div><div class="s-lbl">القنوات</div></div>
+      <div class="stat-card"><div class="s-icon-lg">🔨</div><div class="s-num">${sv.bans?.length||0}</div><div class="s-lbl">المحظورون</div></div>
+    </div>
+    <div style="font-weight:700;margin-bottom:10px;color:var(--text-2)">🏆 أكثر الأعضاء نشاطاً</div>
+    ${top.map(([u,c],i)=>{const usr=DB.users[u]||{display:u};return `<div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--bg-input);border-radius:8px;margin-bottom:6px">
+      <div style="font-size:18px;font-weight:900;color:var(--accent);width:24px">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</div>
+      <div style="width:32px;height:32px;border-radius:50%;background:${avatarColor(u)};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">${esc((usr.avatar||usr.display[0]).slice(0,2))}</div>
+      <div style="flex:1;font-weight:600">${esc(usr.display)}</div>
+      <div style="color:var(--accent);font-weight:700">${c} رسالة</div>
+    </div>`;}).join('')}
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('statsOv').remove()">إغلاق</button></div>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});document.body.appendChild(ov);
+}
+
+/* ═══ POLLS ═══ */
+function openCreatePoll(sid,cid){
+  const ov=document.createElement('div');ov.className='modal-overlay';ov.id='pollOv';
+  ov.innerHTML=`<div class="modal"><h2>📊 إنشاء تصويت</h2>
+    <div class="form-group"><label>السؤال</label><input id="pollQ" type="text" placeholder="ما رأيك في..."></div>
+    <div class="form-group"><label>الخيارات</label>
+      <div id="pollOpts">
+        <input type="text" class="poll-opt-inp" placeholder="خيار 1" style="margin-bottom:6px;width:100%;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-1);font-family:var(--font-main)">
+        <input type="text" class="poll-opt-inp" placeholder="خيار 2" style="margin-bottom:6px;width:100%;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-1);font-family:var(--font-main)">
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="addPollOpt()" style="margin-top:4px">➕ إضافة خيار</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('pollOv').remove()">إغلاق</button>
+      <button class="btn btn-accent" onclick="createPoll('${sid}','${cid}')">📊 إنشاء</button>
+    </div>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});document.body.appendChild(ov);
+}
+function addPollOpt(){
+  const c=document.querySelectorAll('.poll-opt-inp').length+1;
+  const inp=document.createElement('input');inp.type='text';inp.className='poll-opt-inp';inp.placeholder='خيار '+c;inp.style.cssText='margin-bottom:6px;width:100%;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-1);font-family:var(--font-main)';
+  document.getElementById('pollOpts').appendChild(inp);
+}
+function createPoll(sid,cid){
+  const q=document.getElementById('pollQ')?.value.trim();
+  const opts=[...document.querySelectorAll('.poll-opt-inp')].map(i=>i.value.trim()).filter(Boolean);
+  if(!q||opts.length<2){toast('❌ أدخل السؤال وخيارين على الأقل','err');return;}
+  const sv=DB.servers[sid];const ch=sv?.channels.find(c=>c.id===cid);if(!ch)return;
+  if(!ch.messages)ch.messages=[];
+  ch.messages.push({id:uid(),user:me.username,type:'poll',question:q,options:opts.map(o=>({text:o,votes:[]})),time:new Date().toISOString()});
+  saveDB();document.getElementById('pollOv')?.remove();renderMessages();toast('📊 تم إنشاء التصويت!');
+}
+function votePoll(msgId,optIdx){
+  const sv=DB.servers[activeServer];const ch=sv?.channels.find(c=>c.id===activeChannel);if(!ch)return;
+  const msg=ch.messages.find(m=>m.id===msgId);if(!msg||msg.type!=='poll')return;
+  msg.options.forEach(o=>o.votes=o.votes.filter(v=>v!==me.username));
+  msg.options[optIdx].votes.push(me.username);
+  saveDB();renderMessages();
+}
+
+/* ═══ STICKERS ═══ */
+const STICKERS=['😂😂😂','🔥🔥🔥','❤️❤️❤️','😭😭😭','🎉🎊🎈','👏👏👏','🤣🤣🤣','😤😤😤','💪💪💪','🙏🙏🙏','👍👍','😎😎','🤯🤯','🥰🥰','😈😈'];
+function toggleStickerPicker(){
+  const ex=document.getElementById('stickerPicker');if(ex){ex.remove();return;}
+  const picker=document.createElement('div');picker.id='stickerPicker';
+  picker.style.cssText='position:absolute;bottom:60px;right:80px;z-index:200;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:10px;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;box-shadow:0 8px 32px rgba(0,0,0,.4);width:220px';
+  STICKERS.forEach(s=>{const btn=document.createElement('div');btn.style.cssText='font-size:20px;text-align:center;padding:6px;cursor:pointer;border-radius:6px';btn.textContent=s;btn.onmouseenter=()=>btn.style.background='var(--hover)';btn.onmouseleave=()=>btn.style.background='';btn.onclick=()=>{sendSticker(s);picker.remove();};picker.appendChild(btn);});
+  document.querySelector('.chat-input-wrap')?.appendChild(picker);
+  setTimeout(()=>document.addEventListener('click',()=>picker.remove(),{once:true}),50);
+}
+function sendSticker(sticker){
+  if(!activeServer||!activeChannel)return;
+  const sv=DB.servers[activeServer];const ch=sv?.channels.find(c=>c.id===activeChannel);if(!ch)return;
+  if(!ch.messages)ch.messages=[];
+  ch.messages.push({id:uid(),user:me.username,text:sticker,isSticker:true,time:new Date().toISOString(),reactions:{}});
+  saveDB();renderMessages();
+}
+
+/* ═══ GIF SUPPORT ═══ */
+function openGifPicker(){
+  const ex=document.getElementById('gifPicker');if(ex){ex.remove();return;}
+  const picker=document.createElement('div');picker.id='gifPicker';
+  picker.style.cssText='position:absolute;bottom:60px;right:40px;z-index:200;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.4);width:300px';
+  const gifs=['https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif','https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif','https://media.giphy.com/media/26ufdipQqU2lhNA4g/giphy.gif','https://media.giphy.com/media/xT9IgG50Lg7russbD6/giphy.gif'];
+  picker.innerHTML=`<div style="margin-bottom:8px"><input id="gifSearch" type="text" placeholder="ابحث عن GIF..." style="width:100%;padding:7px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-1);font-family:var(--font-main)" oninput="searchGifs(this.value)"></div>
+    <div id="gifGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:200px;overflow-y:auto">
+      ${gifs.map(g=>`<img src="${g}" style="width:100%;border-radius:6px;cursor:pointer;height:80px;object-fit:cover" onclick="sendGif('${g}')" loading="lazy">`).join('')}
+    </div>`;
+  document.querySelector('.chat-input-wrap')?.appendChild(picker);
+  setTimeout(()=>document.addEventListener('click',e=>{if(!picker.contains(e.target))picker.remove();},{once:true}),50);
+}
+function sendGif(url){
+  if(!activeServer||!activeChannel)return;
+  const sv=DB.servers[activeServer];const ch=sv?.channels.find(c=>c.id===activeChannel);if(!ch)return;
+  if(!ch.messages)ch.messages=[];
+  ch.messages.push({id:uid(),user:me.username,text:'',imageUrl:url,time:new Date().toISOString(),reactions:{}});
+  saveDB();renderMessages();document.getElementById('gifPicker')?.remove();
+}
+
+/* ═══ FOCUS MODE ═══ */
+let focusMode=false;
+function toggleFocusMode(){
+  focusMode=!focusMode;
+  document.getElementById('serverRail')?.classList.toggle('hidden',focusMode);
+  document.getElementById('channelPanel')?.classList.toggle('hidden',focusMode);
+  document.getElementById('membersPanel')?.classList.toggle('hidden',focusMode);
+  toast(focusMode?'🎯 وضع التركيز مفعّل':'🎯 وضع التركيز مُعطّل');
+}
+
+/* ═══ MINI GAME: TIC TAC TOE ═══ */
+function openTicTacToe(){
+  const ov=document.createElement('div');ov.className='modal-overlay';ov.id='tttOv';
+  let board=Array(9).fill('');let turn='X';let gameOver=false;
+  const render=()=>{
+    const cells=board.map((c,i)=>`<div class="ttt-cell" onclick="tttMove(${i})">${c}</div>`).join('');
+    document.getElementById('tttGrid').innerHTML=cells;
+    document.getElementById('tttTurn').textContent=gameOver?'انتهت اللعبة!':'دور: '+turn;
+  };
+  window.tttMove=(i)=>{
+    if(board[i]||gameOver)return;
+    board[i]=turn;
+    const wins=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+    const winner=wins.find(([a,b,c])=>board[a]&&board[a]===board[b]&&board[b]===board[c]);
+    if(winner){gameOver=true;toast('🎉 فاز '+turn+'!');render();return;}
+    if(board.every(c=>c)){gameOver=true;toast('تعادل!');render();return;}
+    turn=turn==='X'?'O':'X';render();
+  };
+  ov.innerHTML=`<div class="modal" style="text-align:center"><h2>🎮 تيك تاك تو</h2>
+    <div id="tttTurn" style="margin-bottom:12px;color:var(--accent);font-weight:700">دور: X</div>
+    <div id="tttGrid" style="display:grid;grid-template-columns:repeat(3,80px);gap:6px;justify-content:center;margin:0 auto 16px"></div>
+    <div class="modal-footer" style="justify-content:center">
+      <button class="btn btn-ghost" onclick="document.getElementById('tttOv').remove()">إغلاق</button>
+      <button class="btn btn-accent" onclick="board=Array(9).fill('');turn='X';gameOver=false;render()">🔄 إعادة</button>
+    </div>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});document.body.appendChild(ov);render();
+}
+
+/* ═══ LOGIN LOG ═══ */
+function logLogin(uname){
+  const u=DB.users[uname];if(!u)return;
+  if(!u.loginLogs)u.loginLogs=[];
+  u.loginLogs.unshift({time:new Date().toISOString(),ua:navigator.userAgent.slice(0,80)});
+  if(u.loginLogs.length>10)u.loginLogs.pop();
+  saveDB();
+}
+function openLoginLogs(){
+  const u=DB.users[me.username];
+  const ov=document.createElement('div');ov.className='modal-overlay';ov.id='loginLogOv';
+  ov.innerHTML=`<div class="modal"><h2>📱 سجل تسجيل الدخول</h2>
+    <div style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto">
+      ${(u.loginLogs||[]).length===0?'<p style="color:var(--text-4)">لا توجد سجلات</p>':
+      (u.loginLogs||[]).map((l,i)=>`<div style="padding:10px;background:var(--bg-input);border-radius:8px;border-right:3px solid ${i===0?'var(--green)':'var(--border)'}">
+        <div style="font-size:13px;font-weight:600;color:var(--text-1)">${i===0?'✅ الجهاز الحالي':fmtDate(l.time)+' '+fmtTime(l.time)}</div>
+        <div style="font-size:11px;color:var(--text-4);margin-top:2px">${l.ua.slice(0,60)}...</div>
+      </div>`).join('')}
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('loginLogOv').remove()">إغلاق</button></div>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});document.body.appendChild(ov);
+}
+
+function openChatBgUpload(){const input=document.createElement('input');input.type='file';input.accept='image/*';input.onchange=e=>{const file=e.target.files[0];if(!file)return;if(file.size>5*1024*1024){toast('❌ أكبر من 5MB','err');return;}const reader=new FileReader();reader.onload=ev=>{setChatBg(ev.target.result);toast('✅ تم تغيير خلفية الشات!');};reader.readAsDataURL(file);};input.click();}

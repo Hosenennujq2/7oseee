@@ -1590,3 +1590,50 @@ input, textarea, select { direction: rtl; text-align: right; font-family: var(--
   font-size: 11px; font-weight: 700;
   margin-right: auto;
 }
+
+/* ═══ NOTIFICATIONS ═══ */
+.notif-count{position:absolute;top:-4px;left:-4px;background:var(--red);color:#fff;border-radius:99px;padding:1px 5px;font-size:10px;font-weight:700;min-width:16px;text-align:center;pointer-events:none;}
+.notif-panel{position:fixed;top:56px;left:220px;z-index:5000;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;width:320px;max-height:480px;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.5);direction:rtl;}
+.notif-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-weight:700;}
+.notif-header button{background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;font-family:var(--font-main);}
+.notif-list{overflow-y:auto;flex:1;}
+.notif-item{padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:.15s;}
+.notif-item:hover{background:var(--hover);}
+.notif-item.unread{background:rgba(88,101,242,.08);border-right:3px solid var(--accent);}
+.notif-title{font-size:13px;font-weight:700;color:var(--text-1);margin-bottom:2px;}
+.notif-body{font-size:12px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.notif-time{font-size:11px;color:var(--text-4);margin-top:3px;}
+
+/* ═══ MENTION ═══ */
+.mention{background:rgba(88,101,242,.2);color:var(--accent);border-radius:4px;padding:0 4px;font-weight:700;cursor:pointer;}
+.mention:hover{background:rgba(88,101,242,.4);}
+
+/* ═══ EDIT MESSAGE ═══ */
+.edit-wrap{display:flex;flex-direction:column;gap:6px;}
+.edit-input{width:100%;padding:8px 10px;background:var(--bg-input);border:1px solid var(--accent);border-radius:8px;color:var(--text-1);font-family:var(--font-main);font-size:14px;resize:none;min-height:40px;}
+.edit-actions{display:flex;gap:6px;justify-content:flex-end;}
+.msg-text .edited-tag{font-size:10px;color:var(--text-4);margin-right:6px;}
+
+/* ═══ POLLS ═══ */
+.poll-box{background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:14px;max-width:340px;}
+.poll-q{font-weight:700;font-size:14px;color:var(--text-1);margin-bottom:10px;}
+.poll-opt{position:relative;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:9px 12px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;overflow:hidden;transition:.15s;}
+.poll-opt:hover{border-color:var(--accent);}
+.poll-opt.voted{border-color:var(--accent);}
+.poll-fill{position:absolute;left:0;top:0;bottom:0;background:rgba(88,101,242,.2);transition:width .4s;}
+.poll-label{position:relative;z-index:1;font-size:13px;font-weight:600;}
+.poll-pct{position:relative;z-index:1;font-size:12px;color:var(--text-3);}
+.poll-total{font-size:11px;color:var(--text-4);margin-top:6px;text-align:left;}
+
+/* ═══ STICKERS ═══ */
+.msg-sticker{font-size:48px;line-height:1.2;}
+
+/* ═══ TIC TAC TOE ═══ */
+.ttt-cell{width:80px;height:80px;background:var(--bg-input);border:2px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:900;cursor:pointer;transition:.15s;}
+.ttt-cell:hover{background:var(--hover);border-color:var(--accent);}
+
+/* ═══ SLOW MODE BADGE ═══ */
+.slowmode-badge{background:rgba(250,166,26,.2);color:var(--yellow);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;}
+
+/* ═══ WELCOME SYSTEM MSG ═══ */
+.sys-divider.welcome{color:var(--green);background:rgba(59,165,92,.08);border-radius:6px;padding:6px 12px;}

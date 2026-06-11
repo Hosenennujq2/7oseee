@@ -129,6 +129,7 @@
         <div class="u-name" id="barName">مستخدم</div>
         <div class="u-tag" id="barTag">#0000</div>
       </div>
+      <button class="icon-btn" title="الإشعارات" onclick="openNotifPanel()" id="notifBtn" style="position:relative">🔔</button>
       <button class="icon-btn" title="المتجر" onclick="openShop()">🛍️</button>
       <button class="icon-btn" title="الإعدادات" onclick="openSettings()">⚙️</button>
       <button class="icon-btn" title="تسجيل الخروج" onclick="doLogout()">🚪</button>
@@ -153,6 +154,11 @@
         <div class="header-actions">
           <button class="icon-btn" title="الأعضاء" onclick="toggleMembersPanel()">👥</button>
           <button class="icon-btn" title="بحث" onclick="openSearchModal()">🔍</button>
+          <button class="icon-btn" title="الستيكرات" onclick="toggleStickerPicker()">🎭</button>
+          <button class="icon-btn" title="GIF" onclick="openGifPicker()">GIF</button>
+          <button class="icon-btn" title="تصويت" onclick="openCreatePoll(activeServer,activeChannel)">📊</button>
+          <button class="icon-btn" title="وضع التركيز" onclick="toggleFocusMode()">🎯</button>
+          <button class="icon-btn" title="إحصائيات" onclick="openServerStats(activeServer)">📈</button>
           <button class="icon-btn" title="رفع ملف" onclick="openFileUpload()">📎</button>
         </div>
       </div>
@@ -281,6 +287,8 @@
       <button class="tab-btn" data-tab="security" onclick="renderSettings('security')">الأمان</button>
       <button class="tab-btn" data-tab="appearance" onclick="renderSettings('appearance')">المظهر</button>
       <button class="tab-btn" data-tab="notifications" onclick="renderSettings('notifications')">الإشعارات</button>
+      <button class="tab-btn" data-tab="themes" onclick="renderSettings('themes')">الثيمات</button>
+      <button class="tab-btn" data-tab="security2" onclick="renderSettings('security2')">2FA</button>
     </div>
     <div id="settingsBody"></div>
     <div class="modal-footer">
