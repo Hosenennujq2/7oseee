@@ -360,7 +360,15 @@
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
   import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-  const firebaseConfig = { apiKey:"YOUR_API_KEY", authDomain:"YOUR_PROJECT.firebaseapp.com", projectId:"YOUR_PROJECT_ID", storageBucket:"YOUR_PROJECT.appspot.com", messagingSenderId:"YOUR_SENDER_ID", appId:"YOUR_APP_ID" };
+  const firebaseConfig = {
+    apiKey: "AIzaSyC0Vm425f036uvnTrmTLUeSqWvSq1kFTko",
+    authDomain: "tiscoord-d72ce.firebaseapp.com",
+    projectId: "tiscoord-d72ce",
+    storageBucket: "tiscoord-d72ce.firebasestorage.app",
+    messagingSenderId: "747853392671",
+    appId: "1:747853392671:web:1050d27f89853f45e01e2a",
+    measurementId: "G-GRGXVSZ24P"
+  };
   let firebaseReady=false, app, auth;
   try { app=initializeApp(firebaseConfig); auth=getAuth(app); firebaseReady=firebaseConfig.apiKey!=="YOUR_API_KEY"; } catch(e){ console.warn('Firebase not configured'); }
   window._firebase={ ready:firebaseReady, auth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged };
