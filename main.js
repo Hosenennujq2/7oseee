@@ -2337,3 +2337,739 @@ function openLoginLogs(){
 }
 
 function openChatBgUpload(){const input=document.createElement('input');input.type='file';input.accept='image/*';input.onchange=e=>{const file=e.target.files[0];if(!file)return;if(file.size>5*1024*1024){toast('❌ أكبر من 5MB','err');return;}const reader=new FileReader();reader.onload=ev=>{setChatBg(ev.target.result);toast('✅ تم تغيير خلفية الشات!');};reader.readAsDataURL(file);};input.click();}
+
+/* ═══════════════════════════════════════════════
+   AI BOT SYSTEM — بوت الذكاء الاصطناعي
+═══════════════════════════════════════════════ */
+const AI_BOT_USER = 'ai_bot';
+if (!DB.users[AI_BOT_USER]) {
+  DB.users[AI_BOT_USER] = {
+    password: 'bot_secure_pass_123',
+    display: '🤖 مساعد Tiscord',
+    tag: '#BOT',
+    role: 'helper',
+    avatar: '🤖',
+    status: 'online',
+    joinDate: new Date().toISOString(),
+    email: 'bot@tiscord.app',
+    bio: 'أنا مساعد ذكي — اسألني أي شيء!',
+    banner: '',
+    bannerColor: 'linear-gradient(135deg,#5865f2,#9b59b6)',
+    badges: ['developer', 'verified'],
+    nitro: false, boosts: 0, friends: [], customStatus: '🤖 جاهز للمساعدة',
+    isBot: true
+  };
+}
+
+async function askAIBot(prompt, channelId, serverId) {
+  const sv = DB.servers[serverId];
+  const ch = sv?.channels.find(c => c.id === channelId);
+  if (!ch) return;
+  const typingDiv = document.getElementById('typingIndicator');
+  if (typingDiv) { typingDiv.classList.remove('hidden'); document.getElementById('typingText').textContent = 'مساعد Tiscord يكتب...'; }
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }],
+        system: 'أنت مساعد ذكي في تطبيق Tiscord. أجب بالعربية دائماً، وكن مفيداً وودوداً ومختصراً. لا تتجاوز 3 فقرات في إجاباتك.'
+      })
+    });
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || 'عذراً، لم أتمكن من الإجابة!';
+    if (!DB.servers[AI_BOT_USER]) DB.users[AI_BOT_USER] = DB.users[AI_BOT_USER];
+    if (!sv.members[AI_BOT_USER]) sv.members[AI_BOT_USER] = { role: 'helper', joinDate: new Date().toISOString() };
+    if (!ch.messages) ch.messages = [];
+    ch.messages.push({ id: uid(), user: AI_BOT_USER, text: reply, time: new Date().toISOString(), reactions: {}, isBot: true });
+    saveDB();
+    if (typingDiv) typingDiv.classList.add('hidden');
+    if (activeServer === serverId && activeChannel === channelId) renderMessages();
+  } catch (e) {
+    if (typingDiv) typingDiv.classList.add('hidden');
+    toast('❌ تعذر الاتصال بالبوت', 'err');
+  }
+}
+
+// Hook into sendMsg to detect @bot mentions
+const _origSendMsg = sendMsg;
+window.sendMsg = function() {
+  const input = document.getElementById('chatInputEl');
+  const text = input?.value?.trim() || '';
+  _origSendMsg();
+  if (text.startsWith('@bot ') || text.startsWith('@بوت ')) {
+    const prompt = text.replace(/^@(bot|بوت)\s*/i, '');
+    if (prompt && activeServer && activeChannel) {
+      setTimeout(() => askAIBot(prompt, activeChannel, activeServer), 400);
+    }
+  }
+};
+
+/* ═══════════════════════════════════════════════
+   AUTO TRANSLATION — الترجمة التلقائية
+═══════════════════════════════════════════════ */
+let autoTranslateEnabled = {};
+
+async function translateMessage(text, targetLang = 'ar') {
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        messages: [{ role: 'user', content: `ترجم هذا النص إلى اللغة العربية فقط، لا تضف أي شرح، فقط الترجمة:\n"${text}"` }]
+      })
+    });
+    const data = await res.json();
+    return data.content?.[0]?.text || text;
+  } catch (e) { return text; }
+}
+
+function toggleAutoTranslate() {
+  const u = me.username;
+  autoTranslateEnabled[u] = !autoTranslateEnabled[u];
+  toast(autoTranslateEnabled[u] ? '🌍 الترجمة التلقائية مفعلة' : '🌍 الترجمة التلقائية معطلة');
+  renderMessages();
+}
+
+async function showTranslation(msgId) {
+  const sv = DB.servers[activeServer];
+  const ch = sv?.channels.find(c => c.id === activeChannel);
+  const msg = ch?.messages.find(m => m.id === msgId);
+  if (!msg?.text) return;
+  toast('⏳ جاري الترجمة...', 'ok');
+  const translated = await translateMessage(msg.text);
+  const ov = document.createElement('div'); ov.className = 'modal-overlay'; ov.id = 'transOv';
+  ov.innerHTML = `<div class="modal" style="max-width:480px">
+    <h2>🌍 الترجمة</h2>
+    <div style="background:var(--bg-input);border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:12px;color:var(--text-4);margin-bottom:6px">النص الأصلي:</div>
+      <div style="color:var(--text-2)">${esc(msg.text)}</div>
+    </div>
+    <div style="background:rgba(88,101,242,.1);border:1px solid rgba(88,101,242,.3);border-radius:10px;padding:14px">
+      <div style="font-size:12px;color:var(--accent);margin-bottom:6px">الترجمة:</div>
+      <div style="color:var(--text-1);font-size:15px">${esc(translated)}</div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('transOv').remove()">إغلاق</button></div>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+/* ═══════════════════════════════════════════════
+   CHAT SUMMARIZE — تلخيص الشات
+═══════════════════════════════════════════════ */
+async function summarizeChat() {
+  if (!activeServer || !activeChannel) return;
+  const sv = DB.servers[activeServer];
+  const ch = sv?.channels.find(c => c.id === activeChannel);
+  if (!ch?.messages?.length) { toast('لا توجد رسائل للتلخيص', 'err'); return; }
+  const last50 = ch.messages.slice(-50).map(m => {
+    const u = DB.users[m.user]?.display || m.user;
+    return `${u}: ${m.text || '[صورة]'}`;
+  }).join('\n');
+  toast('⏳ جاري التلخيص...', 'ok');
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 600,
+        messages: [{ role: 'user', content: `لخّص هذه المحادثة باختصار واضح بالعربية في 5 نقاط أو أقل:\n\n${last50}` }]
+      })
+    });
+    const data = await res.json();
+    const summary = data.content?.[0]?.text || 'تعذر التلخيص';
+    const ov = document.createElement('div'); ov.className = 'modal-overlay'; ov.id = 'sumOv';
+    ov.innerHTML = `<div class="modal">
+      <h2>📋 ملخص آخر 50 رسالة</h2>
+      <div style="background:var(--bg-input);border-radius:10px;padding:16px;line-height:1.8;color:var(--text-1);white-space:pre-wrap">${esc(summary)}</div>
+      <div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('sumOv').remove()">إغلاق</button></div>
+    </div>`;
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+  } catch (e) { toast('❌ فشل التلخيص', 'err'); }
+}
+
+/* ═══════════════════════════════════════════════
+   XP & LEVELS SYSTEM — نظام الخبرة والمستويات
+═══════════════════════════════════════════════ */
+function getXP(sid, uname) {
+  return DB.servers[sid]?.xp?.[uname] || 0;
+}
+function getLevel(xp) {
+  return Math.floor(Math.sqrt(xp / 100));
+}
+function getXPForLevel(lvl) {
+  return lvl * lvl * 100;
+}
+function getLevelProgress(xp) {
+  const lvl = getLevel(xp);
+  const curr = getXPForLevel(lvl);
+  const next = getXPForLevel(lvl + 1);
+  return Math.round(((xp - curr) / (next - curr)) * 100);
+}
+function addXP(sid, uname, amount = 5) {
+  if (!DB.servers[sid]) return;
+  if (!DB.servers[sid].xp) DB.servers[sid].xp = {};
+  const oldXP = DB.servers[sid].xp[uname] || 0;
+  const oldLevel = getLevel(oldXP);
+  DB.servers[sid].xp[uname] = (DB.servers[sid].xp[uname] || 0) + amount;
+  const newXP = DB.servers[sid].xp[uname];
+  const newLevel = getLevel(newXP);
+  if (newLevel > oldLevel) {
+    const ch = DB.servers[sid].channels[0];
+    if (ch) {
+      if (!ch.messages) ch.messages = [];
+      ch.messages.push({ id: uid(), type: 'system', text: `🎉 ${DB.users[uname]?.display || uname} وصل إلى المستوى ${newLevel}! 🏆`, time: new Date().toISOString() });
+    }
+    if (uname === me?.username) toast(`🎉 تهانيّ! وصلت إلى المستوى ${newLevel}!`);
+  }
+  saveDB();
+}
+
+// Hook into sendMsg to add XP
+const _origSendMsgXP = window.sendMsg;
+window.sendMsg = function() {
+  _origSendMsgXP();
+  if (activeServer && me) {
+    addXP(activeServer, me.username, 5);
+    addServerCoins(activeServer, me.username, 2);
+  }
+};
+
+function openLeaderboard(sid) {
+  const sv = DB.servers[sid]; if (!sv) return;
+  const xpData = sv.xp || {};
+  const sorted = Object.entries(xpData).sort((a, b) => b[1] - a[1]).slice(0, 20);
+  const ov = document.createElement('div'); ov.className = 'modal-overlay'; ov.id = 'lbOv';
+  const medals = ['🥇', '🥈', '🥉'];
+  ov.innerHTML = `<div class="modal" style="max-width:500px">
+    <h2>🏆 لوحة المتصدرين — ${esc(sv.name)}</h2>
+    <div style="display:flex;flex-direction:column;gap:8px;margin:16px 0;max-height:400px;overflow-y:auto">
+      ${sorted.length === 0 ? '<p style="color:var(--text-4);text-align:center">لا توجد بيانات بعد</p>' :
+      sorted.map(([uname, xp], i) => {
+        const u = DB.users[uname] || { display: uname };
+        const lvl = getLevel(xp);
+        const prog = getLevelProgress(xp);
+        return `<div style="display:flex;align-items:center;gap:12px;padding:12px;background:${i === 0 ? 'rgba(245,197,24,.1)' : 'var(--bg-input)'};border-radius:10px;border:1px solid ${i === 0 ? 'rgba(245,197,24,.4)' : 'var(--border)'}">
+          <div style="font-size:22px;min-width:28px;text-align:center">${medals[i] || (i + 1)}</div>
+          <div style="width:36px;height:36px;border-radius:50%;background:${avatarColor(uname)};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0">
+            ${u.photoURL ? `<img src="${u.photoURL}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : esc((u.avatar || u.display[0]).slice(0, 2))}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;color:var(--text-1)">${esc(u.display)}</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+              <div style="background:var(--bg-card);border-radius:99px;height:6px;flex:1;overflow:hidden">
+                <div style="height:100%;background:var(--accent);width:${prog}%;border-radius:99px;transition:.3s"></div>
+              </div>
+              <span style="font-size:11px;color:var(--text-4);white-space:nowrap">Lv.${lvl} · ${xp} XP</span>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('lbOv').remove()">إغلاق</button></div>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+/* ═══════════════════════════════════════════════
+   REPORTS SYSTEM — نظام التقارير
+═══════════════════════════════════════════════ */
+function openReportModal(type, targetId, extra = '') {
+  const ov = document.createElement('div'); ov.className = 'modal-overlay'; ov.id = 'reportOv';
+  ov.innerHTML = `<div class="modal" style="max-width:440px">
+    <h2>🚨 إبلاغ عن ${type === 'user' ? 'مستخدم' : 'رسالة'}</h2>
+    <div class="form-group">
+      <label>سبب الإبلاغ</label>
+      <select id="reportReason" style="width:100%;padding:9px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-1);font-family:var(--font-main)">
+        <option>محتوى مسيء</option>
+        <option>إزعاج / سبام</option>
+        <option>كلام بذيء</option>
+        <option>انتهاك قوانين السيرفر</option>
+        <option>محتوى غير لائق</option>
+        <option>سبب آخر</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>تفاصيل إضافية (اختياري)</label>
+      <textarea id="reportDetails" placeholder="اشرح بالتفصيل..." style="width:100%;padding:9px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-1);font-family:var(--font-main);resize:none;height:80px"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('reportOv').remove()">إغلاق</button>
+      <button class="btn btn-danger" onclick="submitReport('${type}','${targetId}','${esc(extra)}')">🚨 إرسال البلاغ</button>
+    </div>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+function submitReport(type, targetId, extra) {
+  const reason = document.getElementById('reportReason')?.value;
+  const details = document.getElementById('reportDetails')?.value?.trim();
+  if (!DB.reports) DB.reports = [];
+  DB.reports.unshift({
+    id: uid(), type, targetId, extra,
+    reason, details,
+    reportedBy: me.username,
+    serverId: activeServer,
+    time: new Date().toISOString(),
+    status: 'pending'
+  });
+  if (DB.reports.length > 200) DB.reports.pop();
+  addLog(activeServer, 'بلاغ جديد', me.username, `${type}:${targetId}`);
+  saveDB();
+  document.getElementById('reportOv')?.remove();
+  toast('✅ تم إرسال البلاغ للإدارة!');
+}
+
+function openReportsPanel() {
+  if (!isOwnerUser() && !isStaff(myServerRole(activeServer))) { toast('❌ صلاحيات غير كافية', 'err'); return; }
+  const reports = (DB.reports || []).filter(r => !activeServer || r.serverId === activeServer);
+  const ov = document.createElement('div'); ov.className = 'modal-overlay'; ov.id = 'reportsOv';
+  ov.innerHTML = `<div class="modal" style="max-width:600px">
+    <h2>🚨 البلاغات (${reports.filter(r => r.status === 'pending').length} معلق)</h2>
+    <div style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;margin:12px 0">
+      ${reports.length === 0 ? '<p style="color:var(--text-4);text-align:center;padding:20px">لا توجد بلاغات</p>' :
+      reports.map(r => {
+        const reporter = DB.users[r.reportedBy]?.display || r.reportedBy;
+        const target = r.type === 'user' ? (DB.users[r.targetId]?.display || r.targetId) : 'رسالة';
+        return `<div style="padding:12px;background:var(--bg-input);border-radius:10px;border-right:3px solid ${r.status === 'pending' ? 'var(--red)' : 'var(--green)'}">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span style="font-weight:700;color:var(--text-1)">🚨 بلاغ عن ${esc(target)}</span>
+            <span style="font-size:11px;color:var(--text-4)">${fmtDate(r.time)}</span>
+          </div>
+          <div style="font-size:13px;color:var(--text-2)">السبب: <strong>${esc(r.reason)}</strong></div>
+          ${r.details ? `<div style="font-size:12px;color:var(--text-3);margin-top:4px">${esc(r.details)}</div>` : ''}
+          <div style="font-size:12px;color:var(--text-4);margin-top:4px">بواسطة: ${esc(reporter)}</div>
+          ${r.status === 'pending' ? `<div style="display:flex;gap:6px;margin-top:8px">
+            <button class="btn btn-success btn-sm" onclick="resolveReport('${r.id}','resolved')">✅ تم الحل</button>
+            <button class="btn btn-ghost btn-sm" onclick="resolveReport('${r.id}','dismissed')">❌ تجاهل</button>
+          </div>` : `<span style="font-size:11px;color:var(--green)">✅ ${r.status === 'resolved' ? 'تم الحل' : 'تم التجاهل'}</span>`}
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('reportsOv').remove()">إغلاق</button></div>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+function resolveReport(rid, status) {
+  const r = (DB.reports || []).find(x => x.id === rid);
+  if (r) { r.status = status; saveDB(); }
+  document.getElementById('reportsOv')?.remove();
+  openReportsPanel();
+  toast(status === 'resolved' ? '✅ تم وضع علامة "تم الحل"' : '❌ تم التجاهل');
+}
+
+/* ═══════════════════════════════════════════════
+   INVITE TRACKING — تتبع الدعوات
+═══════════════════════════════════════════════ */
+function trackInvite(sid, inviterName, newMember) {
+  if (!DB.servers[sid]) return;
+  if (!DB.servers[sid].inviteTrack) DB.servers[sid].inviteTrack = {};
+  if (!DB.servers[sid].inviteTrack[inviterName]) DB.servers[sid].inviteTrack[inviterName] = [];
+  DB.servers[sid].inviteTrack[inviterName].push({ user: newMember, time: new Date().toISOString() });
+  saveDB();
+}
+
+function openInviteLeaderboard(sid) {
+  const sv = DB.servers[sid]; if (!sv) return;
+  const track = sv.inviteTrack || {};
+  const sorted = Object.entries(track).map(([u, arr]) => [u, arr.length]).sort((a, b) => b[1] - a[1]);
+  const ov = document.createElement('div'); ov.className = 'modal-overlay'; ov.id = 'invLbOv';
+  ov.innerHTML = `<div class="modal" style="max-width:480px">
+    <h2>📨 أكثر من دعا أعضاء — ${esc(sv.name)}</h2>
+    <div style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;margin:16px 0">
+      ${sorted.length === 0 ? '<p style="color:var(--text-4);text-align:center">لا توجد بيانات دعوات</p>' :
+      sorted.map(([uname, count], i) => {
+        const u = DB.users[uname] || { display: uname };
+        const medals = ['🥇', '🥈', '🥉'];
+        return `<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg-input);border-radius:10px">
+          <span style="font-size:20px;min-width:28px;text-align:center">${medals[i] || (i + 1)}</span>
+          <div style="width:36px;height:36px;border-radius:50%;background:${avatarColor(uname)};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff">
+            ${esc((u.avatar || u.display[0]).slice(0, 2))}
+          </div>
+          <div style="flex:1">
+            <div style="font-weight:700;color:var(--text-1)">${esc(u.display)}</div>
+            <div style="font-size:12px;color:var(--text-4)">${uname}</div>
+          </div>
+          <div style="font-size:18px;font-weight:900;color:var(--accent)">${count} دعوة</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('invLbOv').remove()">إغلاق</button></div>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+/* ═══════════════════════════════════════════════
+   SERVER ECONOMY — اقتصاد السيرفر
+═══════════════════════════════════════════════ */
+function getServerCoins(sid, uname) {
+  return DB.servers[sid]?.economy?.balances?.[uname] || 0;
+}
+function addServerCoins(sid, uname, amount) {
+  if (!DB.servers[sid]) return;
+  if (!DB.servers[sid].economy) DB.servers[sid].economy = { currency: '🪙', name: 'كوين', balances: {}, shop: [] };
+  if (!DB.servers[sid].economy.balances) DB.servers[sid].economy.balances = {};
+  DB.servers[sid].economy.balances[uname] = (DB.servers[sid].economy.balances[uname] || 0) + amount;
+  saveDB();
+}
+function removeServerCoins(sid, uname, amount) {
+  if (!DB.servers[sid]?.economy?.balances) return false;
+  const bal = DB.servers[sid].economy.balances[uname] || 0;
+  if (bal < amount) return false;
+  DB.servers[sid].economy.balances[uname] = bal - amount;
+  saveDB(); return true;
+}
+
+function openEconomyPanel(sid) {
+  const sv = DB.servers[sid]; if (!sv) return;
+  if (!sv.economy) sv.economy = { currency: '🪙', name: 'كوين', balances: {}, shop: [] };
+  const myCoins = getServerCoins(sid, me.username);
+  const myRole = myServerRole(sid);
+  const shop = sv.economy.shop || [];
+  const ov = document.createElement('div'); ov.className = 'modal-overlay'; ov.id = 'ecoOv';
+  ov.innerHTML = `<div class="modal" style="max-width:520px">
+    <h2>${sv.economy.currency} اقتصاد ${esc(sv.name)}</h2>
+    <div style="background:linear-gradient(135deg,rgba(88,101,242,.2),rgba(155,89,182,.2));border:1px solid var(--accent);border-radius:12px;padding:16px;margin-bottom:16px;text-align:center">
+      <div style="font-size:36px;font-weight:900;color:var(--accent)">${myCoins} ${sv.economy.currency}</div>
+      <div style="color:var(--text-3);font-size:13px">رصيدك الحالي</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="openEcoLeaderboard('${sid}')">🏆 المتصدرون</button>
+      <button class="btn btn-ghost btn-sm" onclick="openDailyReward('${sid}')">🎁 مكافأة يومية</button>
+      ${isStaff(myRole) ? `<button class="btn btn-accent btn-sm" onclick="openEcoAdmin('${sid}')">⚙️ إدارة</button>` : ''}
+    </div>
+    <div style="font-weight:700;margin-bottom:10px;color:var(--text-2)">🛍️ متجر السيرفر</div>
+    <div style="display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto">
+      ${shop.length === 0 ? '<p style="color:var(--text-4);text-align:center;padding:16px">لا توجد عناصر في المتجر</p>' :
+      shop.map(item => `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg-input);border-radius:10px">
+        <span style="font-size:24px">${item.emoji || '🎁'}</span>
+        <div style="flex:1">
+          <div style="font-weight:700;color:var(--text-1)">${esc(item.name)}</div>
+          <div style="font-size:12px;color:var(--text-3)">${esc(item.desc || '')}</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-weight:900;color:var(--accent)">${item.price} ${sv.economy.currency}</div>
+          <button class="btn btn-accent btn-sm" style="margin-top:4px" onclick="buyShopEcoItem('${sid}','${item.id}')">شراء</button>
+        </div>
+      </div>`).join('')}
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('ecoOv').remove()">إغلاق</button></div>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+function openEcoLeaderboard(sid) {
+  const sv = DB.servers[sid]; if (!sv?.economy) return;
+  const sorted = Object.entries(sv.economy.balances || {}).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const ov = document.createElement('div'); ov.className = 'modal-overlay'; ov.id = 'ecoLbOv';
+  ov.innerHTML = `<div class="modal" style="max-width:460px">
+    <h2>🏆 أثرى أعضاء ${esc(sv.name)}</h2>
+    <div style="display:flex;flex-direction:column;gap:8px;margin:16px 0">
+      ${sorted.map(([uname, bal], i) => {
+        const u = DB.users[uname] || { display: uname };
+        return `<div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg-input);border-radius:10px">
+          <span style="font-size:18px">${['🥇', '🥈', '🥉'][i] || (i + 1)}</span>
+          <div style="width:32px;height:32px;border-radius:50%;background:${avatarColor(uname)};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">${esc((u.avatar || u.display[0]).slice(0, 2))}</div>
+          <div style="flex:1"><div style="font-weight:700">${esc(u.display)}</div></div>
+          <div style="font-weight:900;color:var(--accent)">${bal} ${sv.economy.currency}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('ecoLbOv').remove()">إغلاق</button></div>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+function openDailyReward(sid) {
+  const u = DB.users[me.username];
+  const lastClaim = u.lastDaily?.[sid];
+  const now = Date.now();
+  const oneDay = 86400000;
+  if (lastClaim && now - lastClaim < oneDay) {
+    const remaining = Math.ceil((oneDay - (now - lastClaim)) / 3600000);
+    toast(`⏳ مكافأتك التالية بعد ${remaining} ساعة`); return;
+  }
+  const reward = Math.floor(Math.random() * 50) + 50;
+  if (!u.lastDaily) u.lastDaily = {};
+  u.lastDaily[sid] = now;
+  addServerCoins(sid, me.username, reward);
+  saveDB();
+  toast(`🎁 حصلت على ${reward} ${DB.servers[sid]?.economy?.currency || '🪙'} كمكافأة يومية!`);
+  document.getElementById('ecoOv')?.remove();
+  openEconomyPanel(sid);
+}
+
+function openEcoAdmin(sid) {
+  const sv = DB.servers[sid];
+  const ov = document.createElement('div'); ov.className = 'modal-overlay'; ov.id = 'ecoAdminOv';
+  ov.innerHTML = `<div class="modal" style="max-width:480px">
+    <h2>⚙️ إدارة الاقتصاد — ${esc(sv.name)}</h2>
+    <div class="form-group"><label>اسم العملة</label>
+      <input id="ecoName" type="text" value="${esc(sv.economy?.name || 'كوين')}">
+    </div>
+    <div class="form-group"><label>إيموجي العملة</label>
+      <input id="ecoEmoji" type="text" value="${sv.economy?.currency || '🪙'}" maxlength="2">
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px">
+      <div style="font-weight:700;margin-bottom:10px">➕ إضافة عنصر للمتجر</div>
+      <div class="form-group"><label>الاسم</label><input id="shopEcoName" type="text" placeholder="مثال: رتبة VIP"></div>
+      <div class="form-group"><label>الوصف</label><input id="shopEcoDesc" type="text" placeholder="وصف قصير..."></div>
+      <div class="form-group"><label>السعر</label><input id="shopEcoPrice" type="number" placeholder="100" min="1"></div>
+      <div class="form-group"><label>إيموجي</label><input id="shopEcoEmoji" type="text" placeholder="🎖️" maxlength="2"></div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+      <div style="font-weight:700;margin-bottom:10px">💰 منح عملة</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="ecoGrantUser" style="flex:1;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-1);font-family:var(--font-main)">
+          ${Object.keys(sv.members || {}).map(u => `<option value="${u}">${esc(DB.users[u]?.display || u)}</option>`).join('')}
+        </select>
+        <input id="ecoGrantAmount" type="number" placeholder="100" min="1" style="width:80px;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-1);font-family:var(--font-main)">
+        <button class="btn btn-accent btn-sm" onclick="ecoGrantCoins('${sid}')">منح</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('ecoAdminOv').remove()">إغلاق</button>
+      <button class="btn btn-accent" onclick="saveEcoSettings('${sid}')">💾 حفظ</button>
+    </div>
+  </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+function saveEcoSettings(sid) {
+  const sv = DB.servers[sid];
+  if (!sv.economy) sv.economy = { balances: {}, shop: [] };
+  sv.economy.name = document.getElementById('ecoName')?.value.trim() || sv.economy.name;
+  sv.economy.currency = document.getElementById('ecoEmoji')?.value.trim() || sv.economy.currency;
+  const sName = document.getElementById('shopEcoName')?.value.trim();
+  const sPrice = parseInt(document.getElementById('shopEcoPrice')?.value);
+  if (sName && sPrice > 0) {
+    if (!sv.economy.shop) sv.economy.shop = [];
+    sv.economy.shop.push({
+      id: uid(), name: sName,
+      desc: document.getElementById('shopEcoDesc')?.value.trim(),
+      price: sPrice,
+      emoji: document.getElementById('shopEcoEmoji')?.value.trim() || '🎁',
+      createdBy: me.username, createdAt: new Date().toISOString()
+    });
+    toast('✅ تم إضافة العنصر للمتجر!');
+  }
+  saveDB();
+  document.getElementById('ecoAdminOv')?.remove();
+  document.getElementById('ecoOv')?.remove();
+  openEconomyPanel(sid);
+}
+
+function ecoGrantCoins(sid) {
+  const uname = document.getElementById('ecoGrantUser')?.value;
+  const amount = parseInt(document.getElementById('ecoGrantAmount')?.value);
+  if (!uname || !amount || amount <= 0) { toast('❌ بيانات غير صحيحة', 'err'); return; }
+  addServerCoins(sid, uname, amount);
+  toast(`✅ تم منح ${amount} ${DB.servers[sid]?.economy?.currency || '🪙'} لـ ${DB.users[uname]?.display || uname}`);
+}
+
+function buyShopEcoItem(sid, itemId) {
+  const sv = DB.servers[sid];
+  const item = sv?.economy?.shop?.find(i => i.id === itemId);
+  if (!item) return;
+  const myCoins = getServerCoins(sid, me.username);
+  if (myCoins < item.price) { toast(`❌ رصيدك غير كافٍ! (${myCoins}/${item.price})`, 'err'); return; }
+  if (!confirm(`شراء "${item.name}" مقابل ${item.price} ${sv.economy.currency}؟`)) return;
+  removeServerCoins(sid, me.username, item.price);
+  if (!DB.users[me.username].purchasedItems) DB.users[me.username].purchasedItems = {};
+  if (!DB.users[me.username].purchasedItems[sid]) DB.users[me.username].purchasedItems[sid] = [];
+  DB.users[me.username].purchasedItems[sid].push({ itemId, time: new Date().toISOString() });
+  addLog(sid, 'شراء من متجر السيرفر', me.username, item.name);
+  saveDB();
+  toast(`✅ تم شراء "${item.name}"!`);
+  document.getElementById('ecoOv')?.remove();
+  openEconomyPanel(sid);
+}
+
+
+/* ═══════════════════════════════════════════════
+   ADMIN PANEL EXTENSIONS
+═══════════════════════════════════════════════ */
+// Patch renderAdmin to handle new tabs
+const _origRenderAdmin = renderAdmin;
+window.renderAdmin = function() {
+  const sv = DB.servers[activeServer];
+  const body = document.getElementById('adminBody');
+  if (!sv || !body) { _origRenderAdmin(); return; }
+  if (adminTab === 'xp') renderAdminXP(sv, body);
+  else if (adminTab === 'economy') renderAdminEconomy(sv, body);
+  else if (adminTab === 'reports') renderAdminReports(sv, body);
+  else _origRenderAdmin();
+};
+
+function renderAdminXP(sv, el) {
+  const xpData = sv.xp || {};
+  const sorted = Object.entries(xpData).sort((a, b) => b[1] - a[1]).slice(0, 30);
+  el.innerHTML = `<div class="a-title">⭐ المستويات والخبرة</div>
+    <div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-accent btn-sm" onclick="openLeaderboard('${activeServer}')">🏆 لوحة المتصدرين</button>
+      <button class="btn btn-ghost btn-sm" onclick="resetAllXP('${activeServer}')">🗑️ إعادة ضبط الكل</button>
+    </div>
+    <div class="t-wrap"><table><thead><tr><th>#</th><th>العضو</th><th>المستوى</th><th>XP</th><th>التقدم</th></tr></thead><tbody>
+      ${sorted.map(([uname, xp], i) => {
+        const u = DB.users[uname] || { display: uname };
+        const lvl = getLevel(xp); const prog = getLevelProgress(xp);
+        return `<tr>
+          <td style="font-weight:700;color:var(--accent)">${['🥇','🥈','🥉'][i]||i+1}</td>
+          <td><div style="font-weight:600">${esc(u.display)}</div><div style="font-size:11px;color:var(--text-4)">${uname}</div></td>
+          <td><span style="background:var(--accent);color:#fff;padding:2px 10px;border-radius:99px;font-weight:800;font-size:12px">Lv.${lvl}</span></td>
+          <td style="font-weight:700;color:var(--accent)">${xp}</td>
+          <td style="min-width:100px">
+            <div style="background:var(--bg-secondary);border-radius:99px;height:6px;overflow:hidden">
+              <div style="height:100%;background:linear-gradient(90deg,var(--accent),#9b59b6);width:${prog}%;border-radius:99px"></div>
+            </div>
+            <div style="font-size:10px;color:var(--text-4);margin-top:2px">${prog}%</div>
+          </td>
+        </tr>`;
+      }).join('')}
+    </tbody></table></div>`;
+}
+
+function resetAllXP(sid) {
+  if (!confirm('إعادة ضبط كل نقاط XP؟ لا يمكن التراجع!')) return;
+  DB.servers[sid].xp = {};
+  saveDB(); toast('✅ تم إعادة الضبط'); renderAdmin();
+}
+
+function renderAdminEconomy(sv, el) {
+  const eco = sv.economy || { currency: '🪙', name: 'كوين', balances: {}, shop: [] };
+  const sorted = Object.entries(eco.balances || {}).sort((a, b) => b[1] - a[1]);
+  el.innerHTML = `<div class="a-title">🪙 إدارة الاقتصاد</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn btn-accent btn-sm" onclick="openEconomyPanel('${activeServer}')">🛍️ فتح المتجر</button>
+      <button class="btn btn-ghost btn-sm" onclick="openEcoAdmin('${activeServer}')">⚙️ إعدادات الاقتصاد</button>
+    </div>
+    <div style="background:var(--bg-input);border-radius:10px;padding:14px;margin-bottom:16px;display:flex;gap:16px;flex-wrap:wrap">
+      <div><div style="font-size:11px;color:var(--text-4)">العملة</div><div style="font-size:20px;font-weight:900;color:var(--accent)">${eco.currency} ${esc(eco.name)}</div></div>
+      <div><div style="font-size:11px;color:var(--text-4)">إجمالي العناصر</div><div style="font-size:20px;font-weight:900;color:var(--accent)">${(eco.shop||[]).length}</div></div>
+    </div>
+    <div class="t-wrap"><table><thead><tr><th>العضو</th><th>الرصيد</th><th>إجراءات</th></tr></thead><tbody>
+      ${sorted.map(([uname, bal]) => {
+        const u = DB.users[uname] || { display: uname };
+        return `<tr>
+          <td>${esc(u.display)}<div style="font-size:11px;color:var(--text-4)">${uname}</div></td>
+          <td style="font-weight:700;color:var(--accent)">${bal} ${eco.currency}</td>
+          <td><div style="display:flex;gap:4px">
+            <button class="btn btn-success btn-sm" onclick="adminEcoGive('${activeServer}','${uname}')">+ منح</button>
+            <button class="btn btn-danger btn-sm" onclick="adminEcoRemove('${activeServer}','${uname}')">- خصم</button>
+          </div></td>
+        </tr>`;
+      }).join('')}
+    </tbody></table></div>`;
+}
+
+function adminEcoGive(sid, uname) {
+  const amt = parseInt(prompt(`منح عملة لـ ${DB.users[uname]?.display}:`));
+  if (!amt || amt <= 0) return;
+  addServerCoins(sid, uname, amt);
+  toast(`✅ تم منح ${amt} ${DB.servers[sid]?.economy?.currency || '🪙'}`);
+  renderAdmin();
+}
+
+function adminEcoRemove(sid, uname) {
+  const amt = parseInt(prompt(`خصم عملة من ${DB.users[uname]?.display}:`));
+  if (!amt || amt <= 0) return;
+  const done = removeServerCoins(sid, uname, amt);
+  toast(done ? `✅ تم الخصم` : '❌ الرصيد غير كافٍ', done ? 'ok' : 'err');
+  renderAdmin();
+}
+
+function renderAdminReports(sv, el) {
+  const reports = (DB.reports || []).filter(r => r.serverId === activeServer);
+  const pending = reports.filter(r => r.status === 'pending');
+  el.innerHTML = `<div class="a-title">🚨 البلاغات (${pending.length} معلق)</div>
+    <div style="display:flex;flex-direction:column;gap:8px;max-height:500px;overflow-y:auto">
+      ${reports.length === 0 ? '<div class="empty"><div class="e-icon">🚨</div><p>لا توجد بلاغات</p></div>' :
+      reports.map(r => {
+        const reporter = DB.users[r.reportedBy]?.display || r.reportedBy;
+        const target = r.type === 'user' ? (DB.users[r.targetId]?.display || r.targetId) : 'رسالة';
+        return `<div style="padding:12px;background:var(--bg-input);border-radius:10px;border-right:3px solid ${r.status === 'pending' ? 'var(--red)' : 'var(--green)'}">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <span style="font-weight:700">بلاغ عن: ${esc(target)}</span>
+            <span style="font-size:11px;color:var(--text-4)">${fmtDate(r.time)}</span>
+          </div>
+          <div>السبب: <strong>${esc(r.reason)}</strong></div>
+          ${r.details ? `<div style="font-size:12px;color:var(--text-3);margin-top:4px">${esc(r.details)}</div>` : ''}
+          <div style="font-size:12px;color:var(--text-4)">المُبلِّغ: ${esc(reporter)}</div>
+          ${r.status === 'pending' ? `<div style="display:flex;gap:6px;margin-top:8px">
+            <button class="btn btn-success btn-sm" onclick="resolveReport('${r.id}','resolved')">✅ تم الحل</button>
+            <button class="btn btn-ghost btn-sm" onclick="resolveReport('${r.id}','dismissed')">تجاهل</button>
+          </div>` : `<div style="font-size:11px;color:var(--green);margin-top:6px">✅ ${r.status === 'resolved' ? 'تم الحل' : 'تم التجاهل'}</div>`}
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+/* ═══════════════════════════════════════════════
+   SERVER QUICK BUTTONS BAR
+═══════════════════════════════════════════════ */
+// Patch openServer to add quick buttons bar
+const _origOpenServer = openServer;
+window.openServer = function(sid) {
+  _origOpenServer(sid);
+  setTimeout(() => {
+    const chScroll = document.getElementById('chScroll');
+    if (!chScroll) return;
+    const existing = document.getElementById('srvQuickBtns');
+    if (existing) existing.remove();
+    const bar = document.createElement('div');
+    bar.id = 'srvQuickBtns';
+    bar.className = 'srv-quick-btns';
+    bar.innerHTML = `
+      <button onclick="openLeaderboard('${sid}')">🏆 المتصدرون</button>
+      <button onclick="openEconomyPanel('${sid}')">🪙 الاقتصاد</button>
+      <button onclick="openInviteLeaderboard('${sid}')">📨 الدعوات</button>
+      <button onclick="openReportsPanel()">🚨 البلاغات</button>
+      <button onclick="openAdminPanel('${sid}')">⚙️ الإدارة</button>
+    `;
+    chScroll.parentElement?.insertBefore(bar, chScroll);
+  }, 100);
+};
+
+/* ═══════════════════════════════════════════════
+   REPORT BUTTON IN MESSAGES
+═══════════════════════════════════════════════ */
+// Patch renderMessages to add report + translate buttons
+const _origRenderMessages = renderMessages;
+window.renderMessages = function() {
+  _origRenderMessages();
+  // Add translate and report buttons to each message
+  document.querySelectorAll('.msg-group[data-msgid]').forEach(el => {
+    const msgId = el.dataset.msgid;
+    const actions = el.querySelector('.msg-actions');
+    if (actions && !actions.querySelector('.translate-btn')) {
+      const translateBtn = document.createElement('button');
+      translateBtn.className = 'msg-act-btn translate-btn';
+      translateBtn.title = 'ترجمة';
+      translateBtn.textContent = '🌍';
+      translateBtn.onclick = () => showTranslation(msgId);
+      const reportBtn = document.createElement('button');
+      reportBtn.className = 'msg-act-btn report-btn';
+      reportBtn.title = 'إبلاغ';
+      reportBtn.textContent = '🚨';
+      reportBtn.onclick = () => openReportModal('message', msgId);
+      actions.appendChild(translateBtn);
+      actions.appendChild(reportBtn);
+    }
+  });
+};
+
