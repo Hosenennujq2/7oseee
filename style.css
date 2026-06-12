@@ -1826,3 +1826,55 @@ input, textarea, select { direction: rtl; text-align: right; font-family: var(--
 }
 .eco-shop-item:hover { border-color: var(--accent); }
 
+
+/* ═══════════════════════════════════════════════
+   NEW: ANNOUNCEMENT BAR, TOGGLES, AUTOMOD, WARNINGS
+═══════════════════════════════════════════════ */
+.global-announce-bar{
+  display:flex;align-items:center;justify-content:center;gap:14px;
+  padding:10px 16px;color:#fff;font-weight:600;font-size:13.5px;
+  text-align:center;position:relative;flex-shrink:0;width:100%;
+  animation:announceSlide .35s ease;
+}
+@keyframes announceSlide{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
+.global-announce-bar button{
+  background:rgba(0,0,0,.2);border:none;color:#fff;border-radius:6px;
+  width:22px;height:22px;cursor:pointer;font-size:13px;line-height:1;
+  position:absolute;left:14px;top:50%;transform:translateY(-50%);
+}
+.global-announce-bar button:hover{background:rgba(0,0,0,.35)}
+
+/* Toggle switch */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:14px;color:var(--text-2)}
+.toggle-row:last-of-type{border-bottom:none}
+.switch{position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.switch .slider{position:absolute;cursor:pointer;inset:0;background:var(--bg-input);border-radius:99px;transition:.2s}
+.switch .slider:before{position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s}
+.switch input:checked + .slider{background:var(--accent)}
+.switch input:checked + .slider:before{transform:translateX(18px)}
+.switch input:disabled + .slider{opacity:.5;cursor:not-allowed}
+
+/* Auto-mod word pills */
+.word-pill{
+  background:var(--bg-input);border:1px solid var(--border);border-radius:99px;
+  padding:4px 10px;font-size:12.5px;color:var(--text-2);display:inline-flex;align-items:center;gap:6px;
+}
+.word-pill b{cursor:pointer;color:var(--red);font-style:normal;font-weight:700}
+.word-pill b:hover{opacity:.7}
+
+/* Warning count pill */
+.warn-pill{
+  background:rgba(250,166,26,.15);color:#faa61a;border-radius:99px;
+  padding:1px 7px;font-size:11px;font-weight:700;
+}
+
+/* Maintenance screen */
+.maintenance-screen{
+  position:fixed;inset:0;z-index:99999;background:var(--bg-1,#1e1f22);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:24px;gap:14px;
+}
+.maintenance-screen .m-icon{font-size:64px}
+.maintenance-screen h2{color:var(--text-1,#fff);font-size:22px}
+.maintenance-screen p{color:var(--text-3,#aaa);max-width:420px;font-size:14px;line-height:1.6}

@@ -13,7 +13,14 @@ function loadDB(){
   if(!DB.dms)DB.dms={};
   if(!DB.friendRequests)DB.friendRequests=[];
   if(!DB.groups)DB.groups={};
+  if(!DB.coOwners)DB.coOwners=[];
+  if(!DB.maintenance)DB.maintenance={active:false,message:'التطبيق تحت الصيانة حالياً، نعتذر عن الإزعاج 🛠️'};
+  if(!DB.announcement)DB.announcement={active:false,text:'',color:'#5865f2'};
   Object.values(DB.users).forEach(u=>{if(!u.friends)u.friends=[];if(u.customStatus===undefined)u.customStatus='';});
+  Object.values(DB.servers).forEach(sv=>{
+    if(!sv.automod)sv.automod={bannedWords:[],antiLink:false,antiInvite:false,antiSpam:false};
+    if(!sv.warnings)sv.warnings={};
+  });
   saveDB();
 }
 
@@ -63,7 +70,8 @@ function roleCls(r){return{owner:'owner',leader:'leader',manager:'manager','admi
 function badge(r){const l=roleLabel(r);if(!l||r==='user')return '';const color=getRoleColor(r);const icon=getRoleIcon(r);return `<span class="role-badge rb-${roleCls(r)}" style="border-color:${color}22;color:${color}">${icon} ${l}</span>`;}
 function avatarColor(u){const p=['#5865f2','#3ba55c','#ed4245','#faa61a','#9b59b6','#3498db','#1abc9c','#e74c3c','#e67e22','#16a085'];let h=0;for(let i=0;i<u.length;i++)h=(h+u.charCodeAt(i))%p.length;return p[h];}
 function myServerRole(sid){const sv=DB.servers[sid];if(!sv)return 'user';const u=DB.users[me?.username];if(u?.role==='owner')return 'owner';if(sv.owner===me?.username)return 'owner';return sv.members?.[me?.username]?.role||'user';}
-function isOwnerUser(){return me?.username==='hosennujq2';}
+function isOwnerUser(){return me?.username==='hosennujq2'||(DB.coOwners||[]).includes(me?.username);}
+function isMainOwner(){return me?.username==='hosennujq2';}
 
 /* ═══════════════════════════════════════════════
    BADGES
@@ -100,7 +108,7 @@ function processMsg(t){
 function switchAuthTab(tab){document.getElementById('loginForm').classList.toggle('hidden',tab!=='login');document.getElementById('registerForm').classList.toggle('hidden',tab!=='register');document.querySelectorAll('.auth-tab').forEach((el,i)=>el.classList.toggle('active',(tab==='login'&&i===0)||(tab==='register'&&i===1)));}
 function doGoogleLogin(){const fb=window._firebase;if(!fb?.ready){toast('⚠️ Firebase غير مفعّل','err');return;}const provider=new fb.GoogleAuthProvider();fb.signInWithPopup(fb.auth,provider).then(r=>handleFirebaseUser(r.user)).catch(()=>toast('❌ فشل تسجيل الدخول','err'));}
 async function handleFirebaseUser(fu){const username='g_'+fu.uid.slice(0,8);if(!DB.users[username])DB.users[username]={password:fu.uid,display:fu.displayName||username,tag:'#GOOG',role:'user',avatar:'😀',status:'online',joinDate:new Date().toISOString(),email:fu.email||'',photoURL:fu.photoURL||'',banner:'',bannerColor:'#5865f2',badges:['early'],nitro:false,boosts:0,friends:[],customStatus:''};DB.users[username].photoURL=fu.photoURL||'';if(!DB.users[username].friends)DB.users[username].friends=[];saveDB();me={username,...DB.users[username]};bootApp();}
-function doLogin(){const u=document.getElementById('loginUser').value.trim().toLowerCase();const p=document.getElementById('loginPass').value;const errEl=document.getElementById('loginError');const user=DB.users[u];if(!user||user.password!==p){showErr(errEl,'❌ اسم المستخدم أو كلمة المرور غلط');document.getElementById('loginPass').value='';return;}errEl.style.display='none';DB.users[u].status='online';saveDB();me={username:u,...DB.users[u]};addLog(null,'تسجيل دخول',u);logLogin(u);bootApp();}
+function doLogin(){const u=document.getElementById('loginUser').value.trim().toLowerCase();const p=document.getElementById('loginPass').value;const errEl=document.getElementById('loginError');const user=DB.users[u];if(!user||user.password!==p){showErr(errEl,'❌ اسم المستخدم أو كلمة المرور غلط');document.getElementById('loginPass').value='';return;}if(user.banned){showErr(errEl,'🔨 هذا الحساب محظور من التطبيق');return;}if(DB.maintenance?.active&&u!=='hosennujq2'&&!(DB.coOwners||[]).includes(u)){showErr(errEl,'🛠️ '+(DB.maintenance.message||'التطبيق تحت الصيانة حالياً'));return;}errEl.style.display='none';DB.users[u].status='online';saveDB();me={username:u,...DB.users[u]};addLog(null,'تسجيل دخول',u);logLogin(u);bootApp();}
 function doRegister(){const u=document.getElementById('regUser').value.trim().toLowerCase();const disp=document.getElementById('regDisplay').value.trim();const email=document.getElementById('regEmail').value.trim();const p=document.getElementById('regPass').value;const errEl=document.getElementById('regError');if(!u||!disp||!p){showErr(errEl,'❌ يرجى ملء جميع الحقول');return;}if(u.length<3){showErr(errEl,'❌ اسم المستخدم قصير');return;}if(!/^[a-z0-9_]+$/.test(u)){showErr(errEl,'❌ أحرف إنجليزية وأرقام فقط');return;}if(p.length<6){showErr(errEl,'❌ كلمة المرور قصيرة');return;}if(DB.users[u]){showErr(errEl,'❌ اسم المستخدم مستخدم');return;}const tag='#'+String(Object.keys(DB.users).length+1).padStart(4,'0');DB.users[u]={password:p,display:disp,tag,email,role:'user',avatar:'😀',status:'online',joinDate:new Date().toISOString(),theme:'dark',bio:'',banner:'',bannerColor:'#5865f2',badges:['early'],nitro:false,boosts:0,friends:[],customStatus:''};saveDB();me={username:u,...DB.users[u]};addLog(null,'تسجيل حساب',u);bootApp();}
 function showErr(el,msg){el.textContent=msg;el.style.display='block';}
 function doLogout(){leaveVoiceChannel();if(me&&DB.users[me.username])DB.users[me.username].status='offline';saveDB();const fb=window._firebase;if(fb?.ready&&fb.auth?.currentUser)fb.signOut(fb.auth).catch(()=>{});me=null;activeServer=null;activeChannel=null;activeDM=null;document.getElementById('app').classList.add('hidden');document.getElementById('authPage').classList.remove('hidden');}
@@ -111,7 +119,20 @@ function togglePass(inputId,btn){const el=document.getElementById(inputId);if(!e
 /* ═══════════════════════════════════════════════
    BOOT
 ═══════════════════════════════════════════════ */
-function bootApp(){document.getElementById('authPage').classList.add('hidden');document.getElementById('app').classList.remove('hidden');applyTheme(DB.users[me.username]?.theme||'dark');loadAccentColor();setTimeout(loadChatBg,300);if(DB.users[me.username]?.fontSize)document.body.style.fontSize=DB.users[me.username].fontSize+'px';refreshUserBar();renderRail();openHome();renderOwnerPanel();toast('أهلاً، '+(DB.users[me.username]?.display||me.username)+' 👋');checkInviteUrl();}
+function bootApp(){document.getElementById('authPage').classList.add('hidden');document.getElementById('app').classList.remove('hidden');applyTheme(DB.users[me.username]?.theme||'dark');loadAccentColor();setTimeout(loadChatBg,300);if(DB.users[me.username]?.fontSize)document.body.style.fontSize=DB.users[me.username].fontSize+'px';refreshUserBar();renderRail();openHome();renderOwnerPanel();showAnnouncementBanner();toast('أهلاً، '+(DB.users[me.username]?.display||me.username)+' 👋');checkInviteUrl();}
+function showAnnouncementBanner(){
+  document.getElementById('globalAnnounceBar')?.remove();
+  const a=DB.announcement;
+  if(!a?.active||!a.text)return;
+  if(sessionStorage.getItem('announce_dismissed')===a.text)return;
+  const bar=document.createElement('div');
+  bar.id='globalAnnounceBar';
+  bar.className='global-announce-bar';
+  bar.style.background=a.color||'#5865f2';
+  bar.innerHTML=`<span>📢 ${esc(a.text)}</span><button onclick="dismissAnnouncement()">✕</button>`;
+  document.getElementById('app').prepend(bar);
+}
+function dismissAnnouncement(){sessionStorage.setItem('announce_dismissed',DB.announcement?.text||'');document.getElementById('globalAnnounceBar')?.remove();}
 function refreshUserBar(){const u=DB.users[me.username];if(!u)return;document.getElementById('barName').textContent=u.display;document.getElementById('barTag').textContent=u.tag;const av=document.getElementById('barAvatar');av.style.background=avatarColor(me.username);if(u.photoURL)av.innerHTML=`<img src="${u.photoURL}" style="width:100%;height:100%;border-radius:50%;object-fit:cover"><div class="u-status ${u.status||'online'}" id="barStatus"></div>`;else av.innerHTML=`<span>${esc((u.avatar||u.display[0]).slice(0,2))}</span><div class="u-status ${u.status||'online'}" id="barStatus"></div>`;}
 function applyTheme(t){document.body.classList.toggle('theme-light',t==='light');document.body.classList.toggle('theme-dark',t!=='light');}
 function statusLabel(s){return{online:'🟢 متاح',idle:'🟡 بعيد',dnd:'🔴 لا تزعج',offline:'⚫ غير متاح'}[s]||'⚫ غير متاح';}
@@ -569,7 +590,19 @@ function renderMessages(){
   const wrap=document.getElementById('msgsWrap');wrap.scrollTop=wrap.scrollHeight;
 }
 function handleChatKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();return;}const ta=e.target;ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,120)+'px';handleTypingIndicator();}
-function sendMsg(){const input=document.getElementById('chatInputEl');const text=input.value.trim();if(!text||!activeServer||!activeChannel)return;if(!checkSlowMode(activeServer,activeChannel))return;const sv=DB.servers[activeServer];const ch=sv?.channels.find(c=>c.id===activeChannel);if(!ch)return;if(!ch.messages)ch.messages=[];const msg={id:uid(),user:me.username,text,time:new Date().toISOString(),reactions:{}};checkMentions(text,activeServer);if(replyTo){msg.replyTo=replyTo;clearReply();}ch.messages.push(msg);if(ch.messages.length>1000)ch.messages.shift();saveDB();input.value='';input.style.height='auto';renderMessages();}
+function sendMsg(){const input=document.getElementById('chatInputEl');const text=input.value.trim();if(!text||!activeServer||!activeChannel)return;const sv=DB.servers[activeServer];const myMember=sv?.members?.[me.username];if(myMember?.mutedUntil&&myMember.mutedUntil>Date.now()){toast('🔇 أنت مكتوم حتى '+fmtDate(myMember.mutedUntil)+' '+fmtTime(myMember.mutedUntil),'err');return;}if(!checkSlowMode(activeServer,activeChannel))return;if(!checkAutomod(sv,text))return;const ch=sv?.channels.find(c=>c.id===activeChannel);if(!ch)return;if(!ch.messages)ch.messages=[];const msg={id:uid(),user:me.username,text,time:new Date().toISOString(),reactions:{}};checkMentions(text,activeServer);if(replyTo){msg.replyTo=replyTo;clearReply();}ch.messages.push(msg);if(ch.messages.length>1000)ch.messages.shift();saveDB();input.value='';input.style.height='auto';renderMessages();}
+function checkAutomod(sv,text){
+  const am=sv?.automod;if(!am)return true;
+  const myRole=myServerRole(sv.id);
+  if(myRole==='owner'||myRole==='leader')return true; // staff bypass
+  const lower=text.toLowerCase();
+  if(am.bannedWords?.length){
+    for(const w of am.bannedWords){if(w&&lower.includes(w.toLowerCase())){toast('🚫 رسالتك تحتوي على كلمة محظورة','err');return false;}}
+  }
+  if(am.antiInvite&&/discord\.gg\/|tiscord\.app\/invite/i.test(text)){toast('🚫 لا يسمح بنشر روابط دعوة','err');return false;}
+  if(am.antiLink&&/https?:\/\//i.test(text)){toast('🚫 لا يسمح بنشر روابط في هذه القناة','err');return false;}
+  return true;
+}
 function setReply(msgId){const sv=DB.servers[activeServer];const ch=sv?.channels.find(c=>c.id===activeChannel);if(!ch)return;const msg=ch.messages.find(m=>m.id===msgId);if(!msg)return;replyTo=msgId;const preview=document.getElementById('replyPreview');const u=DB.users[msg.user]||{display:msg.user};document.getElementById('replyPreviewText').textContent='الرد على '+u.display+': '+(msg.text||'').slice(0,50);preview.classList.remove('hidden');document.getElementById('chatInputEl').focus();}
 function clearReply(){replyTo=null;document.getElementById('replyPreview')?.classList.add('hidden');}
 function deleteMsg(msgId){const sv=DB.servers[activeServer];const ch=sv?.channels.find(c=>c.id===activeChannel);if(!ch)return;const idx=ch.messages.findIndex(m=>m.id===msgId);if(idx===-1)return;const msg=ch.messages[idx];if(msg.user!==me.username&&!isStaff(myServerRole(activeServer)))return;ch.messages.splice(idx,1);saveDB();renderMessages();toast('🗑️ تم حذف الرسالة');}
@@ -641,6 +674,8 @@ function renderAdmin(){
     case 'logs':renderAdminLogs(sv,body);break;
     case 'bans':renderAdminBans(sv,body,myRole);break;
     case 'invites':renderAdminInvites(sv,body,myRole);break;
+    case 'automod':renderAdminAutomod(sv,body,myRole);break;
+    case 'warnings':renderAdminWarnings(sv,body,myRole);break;
     case 'settings':renderAdminSettings(sv,body,myRole);break;
     default:body.innerHTML='<div class="empty"><p>قريباً</p></div>';
   }
@@ -677,17 +712,21 @@ function renderAdminMembers(sv,el,myRole){
     const u=DB.users[uname];if(!u)return;
     const role=u.role==='owner'?'owner':(m.role||'user');
     const editable=(canManage(myRole,role)||myRole==='owner')&&role!=='owner';
+    const isMutedNow=m.mutedUntil&&m.mutedUntil>Date.now();
+    const warnCount=(sv.warnings?.[uname]||[]).length;
     rows+=`<tr>
       <td><div style="display:flex;align-items:center;gap:8px">
         <div style="width:32px;height:32px;border-radius:50%;background:${avatarColor(uname)};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">
           ${u.photoURL?`<img src="${u.photoURL}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`:esc((u.avatar||u.display[0]).slice(0,2))}
         </div>
-        <div><div style="font-weight:600;color:var(--text-1)">${esc(u.display)}</div><div style="font-size:11px;color:var(--text-4)">${uname}</div></div>
+        <div><div style="font-weight:600;color:var(--text-1)">${esc(u.display)}${isMutedNow?' 🔇':''}${warnCount?` <span class="warn-pill">⚠️ ${warnCount}</span>`:''}</div><div style="font-size:11px;color:var(--text-4)">${uname}</div></div>
       </div></td>
       <td>${badge(role)||'عضو'}</td>
       <td>${fmtDate(m.joinDate||u.joinDate)}</td>
       <td><div style="display:flex;gap:4px;flex-wrap:wrap">
         ${editable?`<select class="role-sel" onchange="setMemberRole('${sv.id}','${uname}',this.value)">${ROLE_ORDER.filter(r=>r!=='owner').map(r=>`<option value="${r}" ${role===r?'selected':''}>${roleLabel(r)||'عضو'}</option>`).join('')}</select>`:''}
+        ${editable?(isMutedNow?`<button class="btn btn-ghost btn-sm" onclick="unmuteMemberNow('${sv.id}','${uname}')">🔊 رفع الكتم</button>`:`<button class="btn btn-ghost btn-sm" onclick="openMuteMenu('${sv.id}','${uname}')">🔇 كتم</button>`):''}
+        ${editable?`<button class="btn btn-ghost btn-sm" onclick="promptWarning('${sv.id}','${uname}')">⚠️ تحذير</button>`:''}
         ${editable?`<button class="btn btn-warn btn-sm" onclick="kickMember('${sv.id}','${uname}')">طرد</button><button class="btn btn-danger btn-sm" onclick="banMember('${sv.id}','${uname}')">حظر</button>`:''}
       </div></td>
     </tr>`;
@@ -695,9 +734,51 @@ function renderAdminMembers(sv,el,myRole){
   el.innerHTML=`<div class="a-title">👥 إدارة الأعضاء</div>
     <div class="t-wrap"><table><thead><tr><th>العضو</th><th>الرتبة</th><th>تاريخ الانضمام</th><th>الإجراءات</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
+function promptWarning(sid,uname){const reason=prompt('سبب التحذير (اختياري):','');if(reason===null)return;addWarning(sid,uname,reason.trim());}
 function setMemberRole(sid,uname,newRole){const sv=DB.servers[sid];if(!sv?.members[uname])return;sv.members[uname].role=newRole;if(DB.users[uname])DB.users[uname].role=newRole;saveDB();addLog(sid,'تغيير رتبة',me.username,uname+'←'+newRole);toast('✅ تم تغيير الرتبة إلى '+roleLabel(newRole));renderAdmin();renderMembers(sid);}
 function kickMember(sid,uname){if(uname===me.username){toast('❌ لا يمكنك طرد نفسك','err');return;}if(!confirm('هل تريد طرد '+DB.users[uname]?.display+'؟'))return;delete DB.servers[sid].members[uname];saveDB();addLog(sid,'طرد عضو',me.username,uname);toast('👟 تم الطرد');renderAdmin();renderMembers(sid);}
 function banMember(sid,uname){if(uname===me.username){toast('❌ لا يمكنك حظر نفسك','err');return;}if(!confirm('هل تريد حظر '+DB.users[uname]?.display+'؟'))return;const sv=DB.servers[sid];if(!sv.bans)sv.bans=[];if(!sv.bans.includes(uname))sv.bans.push(uname);delete sv.members[uname];saveDB();addLog(sid,'حظر عضو',me.username,uname);toast('🔨 تم الحظر');renderAdmin();renderMembers(sid);}
+
+/* ─── TIMED MUTE ─── */
+const MUTE_DURATIONS={'5':'5 دقائق','30':'30 دقيقة','60':'ساعة','1440':'يوم كامل','10080':'أسبوع'};
+function openMuteMenu(sid,uname){
+  const ov=document.createElement('div');ov.className='modal-overlay';ov.id='muteMenuOv';
+  ov.innerHTML=`<div class="modal"><h2>🔇 كتم ${esc(DB.users[uname]?.display||uname)}</h2><p class="m-sub">اختر مدة الكتم من الكتابة في القنوات النصية</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin:12px 0">
+      ${Object.entries(MUTE_DURATIONS).map(([min,label])=>`<button class="btn btn-ghost" onclick="muteMemberTimed('${sid}','${uname}',${min})">⏱️ ${label}</button>`).join('')}
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('muteMenuOv').remove()">إلغاء</button></div>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  document.body.appendChild(ov);
+}
+function muteMemberTimed(sid,uname,minutes){
+  const sv=DB.servers[sid];const m=sv?.members?.[uname];if(!m)return;
+  m.mutedUntil=Date.now()+minutes*60000;
+  saveDB();addLog(sid,'كتم مؤقت',me.username,uname+' ← '+minutes+' دقيقة');
+  document.getElementById('muteMenuOv')?.remove();
+  toast('🔇 تم كتم '+(DB.users[uname]?.display||uname));renderAdmin();renderMembers(sid);
+}
+function unmuteMemberNow(sid,uname){
+  const sv=DB.servers[sid];const m=sv?.members?.[uname];if(!m)return;
+  delete m.mutedUntil;saveDB();addLog(sid,'رفع الكتم',me.username,uname);
+  toast('🔊 تم رفع الكتم');renderAdmin();renderMembers(sid);
+}
+
+/* ─── WARNINGS ─── */
+function addWarning(sid,uname,reason){
+  const sv=DB.servers[sid];if(!sv)return;if(!sv.warnings)sv.warnings={};
+  if(!sv.warnings[uname])sv.warnings[uname]=[];
+  sv.warnings[uname].push({id:uid(),reason:reason||'بدون سبب',by:me.username,time:new Date().toISOString()});
+  saveDB();addLog(sid,'إصدار تحذير',me.username,uname+(reason?' — '+reason:''));
+  toast('⚠️ تم تحذير '+(DB.users[uname]?.display||uname));renderAdmin();
+}
+function removeWarning(sid,uname,wid){
+  const sv=DB.servers[sid];if(!sv?.warnings?.[uname])return;
+  sv.warnings[uname]=sv.warnings[uname].filter(w=>w.id!==wid);
+  saveDB();addLog(sid,'حذف تحذير',me.username,uname);
+  toast('🗑️ تم حذف التحذير');renderAdmin();
+}
 function unbanMember(sid,uname){DB.servers[sid].bans=DB.servers[sid].bans.filter(b=>b!==uname);saveDB();addLog(sid,'رفع الحظر',me.username,uname);toast('✅ تم رفع الحظر');renderAdmin();}
 
 /* ROLES */
@@ -740,6 +821,43 @@ function renderAdminBans(sv,el,myRole){const bans=sv.bans||[];const rows=bans.ma
 function renderAdminInvites(sv,el,myRole){el.innerHTML=`<div class="a-title">📨 الدعوات</div><div class="invite-card"><div><h3>كود الدعوة الحالي</h3></div><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div class="invite-code">${sv.inviteCode}</div><button class="btn btn-ghost btn-sm" onclick="copyText('${sv.inviteCode}')">📋 نسخ</button><button class="btn btn-ghost btn-sm" onclick="shareInviteLink('${sv.inviteCode}')">🔗 مشاركة</button>${(myRole==='owner'||myRole==='leader')?`<button class="btn btn-danger btn-sm" onclick="regenInvite('${activeServer}')">🔄 تجديد</button>`:''}</div></div>`;}
 function shareInviteLink(code){const url=location.origin+location.pathname+'?invite='+code;if(navigator.share)navigator.share({title:'Tiscord',text:'انضم! الكود: '+code,url});else copyText(url);}
 function regenInvite(sid){DB.servers[sid].inviteCode=Math.random().toString(36).slice(2,8).toUpperCase();saveDB();addLog(sid,'تجديد كود الدعوة',me.username);toast('✅ تم التجديد!');renderAdmin();}
+
+/* ─── AUTO-MOD ─── */
+function renderAdminAutomod(sv,el,myRole){
+  const canEdit=myRole==='owner'||myRole==='leader'||myRole==='manager';
+  const am=sv.automod||{bannedWords:[],antiLink:false,antiInvite:false,antiSpam:false};
+  const words=(am.bannedWords||[]).map(w=>`<span class="word-pill">${esc(w)}${canEdit?` <b onclick="removeBannedWord('${sv.id}','${esc(w).replace(/'/g,"\\'")}')">✕</b>`:''}</span>`).join('')||'<span style="color:var(--text-4);font-size:13px">لا توجد كلمات محظورة</span>';
+  el.innerHTML=`<div class="a-title">🛡️ الحماية التلقائية (Auto-Mod)</div>
+    <div class="t-wrap" style="margin-bottom:16px;padding:16px">
+      <h3 style="margin-bottom:12px">⚙️ الإعدادات العامة</h3>
+      <label class="toggle-row"><span>🚫 منع الروابط العامة في كل القنوات</span><label class="switch"><input type="checkbox" ${am.antiLink?'checked':''} ${canEdit?'':'disabled'} onchange="toggleAutomod('${sv.id}','antiLink',this.checked)"><span class="slider"></span></label></label>
+      <label class="toggle-row"><span>🔗 منع روابط الدعوات/السيرفرات الأخرى</span><label class="switch"><input type="checkbox" ${am.antiInvite?'checked':''} ${canEdit?'':'disabled'} onchange="toggleAutomod('${sv.id}','antiInvite',this.checked)"><span class="slider"></span></label></label>
+    </div>
+    <div class="t-wrap" style="padding:16px">
+      <h3 style="margin-bottom:12px">🚫 الكلمات المحظورة</h3>
+      ${canEdit?`<div class="input-row" style="margin-bottom:12px"><input type="text" id="bannedWordInput" placeholder="أدخل كلمة محظورة"><button class="btn btn-accent" onclick="addBannedWord('${sv.id}')">➕ إضافة</button></div>`:''}
+      <div style="display:flex;flex-wrap:wrap;gap:6px">${words}</div>
+    </div>
+    <p class="m-sub" style="margin-top:12px">ℹ️ صلاحيات الإدارة (ليدر فما فوق) معفاة من هذه القيود تلقائياً.</p>`;
+}
+function toggleAutomod(sid,key,val){const sv=DB.servers[sid];if(!sv.automod)sv.automod={bannedWords:[],antiLink:false,antiInvite:false,antiSpam:false};sv.automod[key]=val;saveDB();addLog(sid,'تعديل الحماية التلقائية',me.username,key+'='+val);toast('✅ تم الحفظ');renderAdmin();}
+function addBannedWord(sid){const input=document.getElementById('bannedWordInput');const w=input?.value.trim();if(!w){toast('❌ أدخل كلمة','err');return;}const sv=DB.servers[sid];if(!sv.automod)sv.automod={bannedWords:[],antiLink:false,antiInvite:false,antiSpam:false};if(!sv.automod.bannedWords)sv.automod.bannedWords=[];if(sv.automod.bannedWords.includes(w)){toast('⚠️ الكلمة موجودة مسبقاً','err');return;}sv.automod.bannedWords.push(w);saveDB();addLog(sid,'إضافة كلمة محظورة',me.username,w);input.value='';toast('✅ تمت الإضافة');renderAdmin();}
+function removeBannedWord(sid,w){const sv=DB.servers[sid];if(!sv?.automod?.bannedWords)return;sv.automod.bannedWords=sv.automod.bannedWords.filter(x=>x!==w);saveDB();addLog(sid,'حذف كلمة محظورة',me.username,w);toast('🗑️ تم الحذف');renderAdmin();}
+
+/* ─── WARNINGS PANEL ─── */
+function renderAdminWarnings(sv,el,myRole){
+  const canEdit=myRole==='owner'||isStaff(myRole);
+  const wmap=sv.warnings||{};
+  let rows='';
+  Object.entries(wmap).forEach(([uname,list])=>{
+    if(!list?.length)return;
+    const u=DB.users[uname];if(!u)return;
+    rows+=list.map(w=>`<tr><td style="font-weight:600">${esc(u.display)}</td><td>${esc(w.reason||'—')}</td><td>${esc(DB.users[w.by]?.display||w.by)}</td><td>${fmtDate(w.time)} ${fmtTime(w.time)}</td><td>${canEdit?`<button class="btn btn-danger btn-sm" onclick="removeWarning('${sv.id}','${uname}','${w.id}')">🗑️</button>`:'—'}</td></tr>`).join('');
+  });
+  el.innerHTML=`<div class="a-title">⚠️ سجل التحذيرات</div>
+    ${canEdit?`<p class="m-sub" style="margin-bottom:12px">💡 لإصدار تحذير لعضو، اذهب لتبويب "الأعضاء" واضغط ⚠️ تحذير.</p>`:''}
+    <div class="t-wrap"><table><thead><tr><th>العضو</th><th>السبب</th><th>بواسطة</th><th>التاريخ</th><th>إجراء</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-4)">لا توجد تحذيرات</td></tr>'}</tbody></table></div>`;
+}
 function renderAdminSettings(sv,el,myRole){if(myRole!=='owner'){el.innerHTML='<div class="empty"><div class="e-icon">🔒</div><p>هذا القسم للأونر فقط</p></div>';return;}el.innerHTML=`<div class="a-title">⚙️ إعدادات السيرفر</div><div class="form-group"><label>اسم السيرفر</label><input id="edName" type="text" value="${esc(sv.name)}"></div><div class="form-group"><label>إيموجي</label><input id="edEmoji" type="text" value="${esc(sv.emoji||'🎮')}" maxlength="2"></div><div class="form-group"><label>الوصف</label><input id="edDesc" type="text" value="${esc(sv.desc||'')}"></div><div class="form-group"><label><input type="checkbox" id="edPublic" ${sv.isPublic?'checked':''}> السيرفر عام</label></div><div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap"><button class="btn btn-accent" onclick="saveServerSettings('${activeServer}')">💾 حفظ</button><button class="btn btn-danger" onclick="confirmDelete('${activeServer}')">🗑️ حذف السيرفر</button><button class="btn btn-ghost" onclick="leaveServer('${activeServer}')">🚪 مغادرة</button></div>`;}
 function saveServerSettings(sid){const sv=DB.servers[sid];sv.name=document.getElementById('edName')?.value.trim()||sv.name;sv.emoji=document.getElementById('edEmoji')?.value.trim()||sv.emoji;sv.desc=document.getElementById('edDesc')?.value.trim();sv.isPublic=document.getElementById('edPublic')?.checked;saveDB();addLog(sid,'تعديل إعدادات السيرفر',me.username);renderRail();document.getElementById('srvHeader').innerHTML=`<span>${esc(sv.emoji)} ${esc(sv.name)}</span><span class="chevron">▾</span>`;toast('✅ تم الحفظ!');}
 function confirmDelete(sid){if(!confirm('هل أنت متأكد من حذف السيرفر؟ لا يمكن التراجع!'))return;delete DB.servers[sid];saveDB();toast('🗑️ تم حذف السيرفر');activeServer=null;activeChannel=null;renderRail();openHome();}
@@ -1118,6 +1236,10 @@ function openOwnerPanel(){
       <button class="op-tab" onclick="ownerTab('logs',this)">📋 لوقان</button>
       <button class="op-tab" onclick="ownerTab('servers',this)">🌐 السيرفرات</button>
       <button class="op-tab" onclick="ownerTab('voice',this)">🔊 كالم</button>
+      <button class="op-tab" onclick="ownerTab('users',this)">👥 المستخدمين</button>
+      <button class="op-tab" onclick="ownerTab('announce',this)">📢 إعلان عام</button>
+      <button class="op-tab" onclick="ownerTab('maintenance',this)">🛠️ الصيانة</button>
+      <button class="op-tab" onclick="ownerTab('backup',this)">💾 نسخة احتياطية</button>
     </div>
     <div class="op-body" id="opBody"></div>
   </div>`;
@@ -1136,6 +1258,10 @@ function ownerTab(tab, el){
   else if(tab==='logs') renderOpLogs(body);
   else if(tab==='servers') renderOpServers(body);
   else if(tab==='voice') renderOpVoice(body);
+  else if(tab==='users') renderOpUsers(body);
+  else if(tab==='announce') renderOpAnnounce(body);
+  else if(tab==='maintenance') renderOpMaintenance(body);
+  else if(tab==='backup') renderOpBackup(body);
 }
 
 /* ─── BAN ─── */
@@ -1388,6 +1514,158 @@ function ownerKickFromVoice(sid,cid,uname){
   delete DB.servers[sid].voiceRooms[cid][uname]; saveDB();
   toast('👟 تم طرد '+DB.users[uname]?.display+' من الكالم');
   ownerTab('voice',document.querySelector('.op-tab.active'));
+}
+
+/* ─── USERS MANAGEMENT ─── */
+function renderOpUsers(body){
+  const users = Object.entries(DB.users).filter(([u])=>u!=='hosennujq2');
+  body.innerHTML = `
+    <div class="op-section-title">👥 إدارة جميع المستخدمين (${users.length+1})</div>
+    <div class="op-search-bar">
+      <input id="opUserSearch" type="text" placeholder="ابحث عن مستخدم..." oninput="filterOpUsers(this.value)">
+    </div>
+    <div id="opUserList" class="op-list">
+      <div class="op-user-row" data-name="hosennujq2 ${DB.users.hosennujq2.display.toLowerCase()}">
+        <div class="op-av" style="background:${avatarColor('hosennujq2')}">👑</div>
+        <div class="op-uinfo">
+          <div class="op-uname">${esc(DB.users.hosennujq2.display)}</div>
+          <div class="op-utag">hosennujq2 <span class="op-banned-tag" style="background:#5865f2">المالك الأساسي</span></div>
+        </div>
+      </div>
+      ${users.map(([uname,u])=>{
+        const isCo=(DB.coOwners||[]).includes(uname);
+        return `
+      <div class="op-user-row" data-name="${uname} ${u.display.toLowerCase()}">
+        <div class="op-av" style="background:${avatarColor(uname)}">${esc((u.avatar||u.display[0]).slice(0,2))}</div>
+        <div class="op-uinfo">
+          <div class="op-uname">${esc(u.display)} ${isCo?'<span class="op-banned-tag" style="background:#9b59b6">أونر مساعد</span>':''}</div>
+          <div class="op-utag">${uname} · ${roleLabel(u.role)||'عضو'}${u.banned?' <span class="op-banned-tag">محظور</span>':''}</div>
+        </div>
+        <div class="op-actions" style="flex-wrap:wrap;gap:6px">
+          <select class="role-sel" onchange="ownerSetGlobalRole('${uname}',this.value)" style="font-size:12px">
+            ${ROLE_ORDER.filter(r=>r!=='owner').map(r=>`<option value="${r}" ${(u.role||'user')===r?'selected':''}>${roleLabel(r)||'عضو عادي'}</option>`).join('')}
+          </select>
+          ${isMainOwner()?`<button class="op-btn ${isCo?'op-btn-red':'op-btn-green'}" onclick="toggleCoOwner('${uname}')">${isCo?'➖ إزالة أونر مساعد':'➕ أونر مساعد'}</button>`:''}
+          ${isMainOwner()?`<button class="op-btn op-btn-red" onclick="ownerDeleteAccount('${uname}')">🗑️ حذف الحساب</button>`:''}
+        </div>
+      </div>`;}).join('')}
+    </div>`;
+}
+function filterOpUsers(q){
+  document.querySelectorAll('#opUserList .op-user-row').forEach(row=>{
+    row.style.display = row.dataset.name?.includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+function ownerSetGlobalRole(uname,newRole){
+  if(!DB.users[uname])return;
+  DB.users[uname].role=newRole;
+  saveDB();addLog(null,'تغيير رتبة عامة','hosennujq2',uname+' ← '+roleLabel(newRole));
+  toast('✅ تم تغيير رتبة '+DB.users[uname].display);
+}
+function toggleCoOwner(uname){
+  if(!isMainOwner())return;
+  if(!DB.coOwners)DB.coOwners=[];
+  if(DB.coOwners.includes(uname)){
+    DB.coOwners=DB.coOwners.filter(u=>u!==uname);
+    toast('➖ تم إزالة '+DB.users[uname]?.display+' من الأونرز المساعدين');
+    addLog(null,'إزالة أونر مساعد','hosennujq2',uname);
+  }else{
+    if(!confirm('منح '+DB.users[uname]?.display+' صلاحيات أونر مساعد (وصول كامل للوحة التحكم)؟'))return;
+    DB.coOwners.push(uname);
+    toast('👑 تم تعيين '+DB.users[uname]?.display+' كأونر مساعد');
+    addLog(null,'تعيين أونر مساعد','hosennujq2',uname);
+  }
+  saveDB();ownerTab('users',document.querySelector('.op-tab.active'));
+}
+function ownerDeleteAccount(uname){
+  if(!isMainOwner()||uname==='hosennujq2')return;
+  if(!confirm('⚠️ حذف حساب '+DB.users[uname]?.display+' نهائياً؟ لا يمكن التراجع!'))return;
+  Object.values(DB.servers).forEach(sv=>{delete sv.members[uname];});
+  DB.coOwners=(DB.coOwners||[]).filter(u=>u!==uname);
+  delete DB.users[uname];
+  saveDB();addLog(null,'حذف حساب','hosennujq2',uname);
+  toast('🗑️ تم حذف الحساب');ownerTab('users',document.querySelector('.op-tab.active'));
+}
+
+/* ─── ANNOUNCEMENT ─── */
+function renderOpAnnounce(body){
+  const a=DB.announcement||{active:false,text:'',color:'#5865f2'};
+  body.innerHTML = `
+    <div class="op-section-title">📢 إعلان عام لكل المستخدمين</div>
+    <p class="m-sub">يظهر هذا الإعلان كشريط في أعلى التطبيق لجميع المستخدمين عند فتحه.</p>
+    <div class="form-group"><label>نص الإعلان</label><textarea id="opAnnounceText" rows="3" placeholder="مثال: تحديث جديد متوفر الآن! 🎉">${esc(a.text||'')}</textarea></div>
+    <div class="form-group"><label>لون الشريط</label><input type="color" id="opAnnounceColor" value="${a.color||'#5865f2'}" style="width:60px;height:38px;border:none;border-radius:8px;cursor:pointer"></div>
+    <label class="toggle-row"><span>تفعيل الإعلان</span><label class="switch"><input type="checkbox" id="opAnnounceActive" ${a.active?'checked':''}><span class="slider"></span></label></label>
+    <button class="btn btn-accent" style="margin-top:12px" onclick="saveAnnouncement()">💾 حفظ ونشر</button>`;
+}
+function saveAnnouncement(){
+  const text=document.getElementById('opAnnounceText')?.value.trim()||'';
+  const color=document.getElementById('opAnnounceColor')?.value||'#5865f2';
+  const active=document.getElementById('opAnnounceActive')?.checked||false;
+  DB.announcement={text,color,active};
+  saveDB();addLog(null,'تحديث الإعلان العام','hosennujq2',active?'تفعيل':'تعطيل');
+  toast(active?'📢 تم نشر الإعلان!':'✅ تم الحفظ');
+  showAnnouncementBanner();
+}
+
+/* ─── MAINTENANCE MODE ─── */
+function renderOpMaintenance(body){
+  const m=DB.maintenance||{active:false,message:''};
+  body.innerHTML = `
+    <div class="op-section-title">🛠️ وضع الصيانة</div>
+    <p class="m-sub">عند التفعيل، لن يستطيع أي مستخدم (عدا الأونر والأونرز المساعدين) تسجيل الدخول، وستظهر له رسالة الصيانة.</p>
+    <div class="form-group"><label>رسالة الصيانة</label><textarea id="opMaintMsg" rows="3">${esc(m.message||'')}</textarea></div>
+    <label class="toggle-row"><span>تفعيل وضع الصيانة ${m.active?'<strong style="color:var(--red)">(مفعّل الآن 🔴)</strong>':''}</span><label class="switch"><input type="checkbox" id="opMaintActive" ${m.active?'checked':''}><span class="slider"></span></label></label>
+    <button class="btn btn-accent" style="margin-top:12px" onclick="saveMaintenance()">💾 حفظ</button>`;
+}
+function saveMaintenance(){
+  const message=document.getElementById('opMaintMsg')?.value.trim()||'التطبيق تحت الصيانة حالياً';
+  const active=document.getElementById('opMaintActive')?.checked||false;
+  DB.maintenance={message,active};
+  saveDB();addLog(null,'تعديل وضع الصيانة','hosennujq2',active?'تفعيل':'تعطيل');
+  toast(active?'🛠️ تم تفعيل وضع الصيانة':'✅ تم إيقاف وضع الصيانة');
+  ownerTab('maintenance',document.querySelector('.op-tab.active'));
+}
+
+/* ─── BACKUP / RESTORE ─── */
+function renderOpBackup(body){
+  const sizeKb=Math.round((JSON.stringify(DB).length/1024)*10)/10;
+  body.innerHTML = `
+    <div class="op-section-title">💾 نسخ احتياطي واستعادة البيانات</div>
+    <p class="m-sub">حجم البيانات الحالية: ${sizeKb} KB. النسخة الاحتياطية ملف JSON يحتوي كل بيانات التطبيق (المستخدمين، السيرفرات، الرسائل...).</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+      <button class="btn btn-accent" onclick="exportBackup()">⬇️ تصدير نسخة احتياطية</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('opRestoreInput').click()">⬆️ استيراد نسخة احتياطية</button>
+      <input type="file" id="opRestoreInput" accept="application/json" style="display:none" onchange="importBackup(this)">
+    </div>
+    <p class="m-sub" style="margin-top:14px;color:var(--red)">⚠️ استيراد نسخة احتياطية سيستبدل كل البيانات الحالية بشكل كامل ولا يمكن التراجع عنه.</p>`;
+}
+function exportBackup(){
+  const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='tiscord-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();URL.revokeObjectURL(url);
+  toast('✅ تم تصدير النسخة الاحتياطية');
+}
+function importBackup(input){
+  const file=input.files?.[0];if(!file)return;
+  if(!confirm('⚠️ سيتم استبدال كل البيانات الحالية بالنسخة المستوردة. هل أنت متأكد؟')){input.value='';return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const parsed=JSON.parse(e.target.result);
+      if(!parsed.users||!parsed.servers){toast('❌ ملف غير صالح','err');return;}
+      DB=parsed;DB.version=5;
+      if(!DB.coOwners)DB.coOwners=[];
+      if(!DB.maintenance)DB.maintenance={active:false,message:''};
+      if(!DB.announcement)DB.announcement={active:false,text:'',color:'#5865f2'};
+      saveDB();
+      toast('✅ تم الاستيراد بنجاح! إعادة التحميل...');
+      setTimeout(()=>location.reload(),1200);
+    }catch(err){toast('❌ خطأ في قراءة الملف','err');}
+  };
+  reader.readAsText(file);
 }
 
 /* ═══════════════════════════════════════════════
