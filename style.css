@@ -1878,3 +1878,57 @@ input, textarea, select { direction: rtl; text-align: right; font-family: var(--
 .maintenance-screen .m-icon{font-size:64px}
 .maintenance-screen h2{color:var(--text-1,#fff);font-size:22px}
 .maintenance-screen p{color:var(--text-3,#aaa);max-width:420px;font-size:14px;line-height:1.6}
+
+/* Custom role tags */
+.custom-tag{
+  display:inline-flex;align-items:center;gap:3px;border-radius:99px;
+  padding:1px 8px;font-size:11px;font-weight:700;margin-right:4px;
+}
+.custom-tag b{cursor:pointer;font-style:normal;margin-right:2px;opacity:.7}
+.custom-tag b:hover{opacity:1}
+
+/* Ticket thread */
+.ticket-thread{max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin:10px 0;padding:10px;background:var(--bg-input);border-radius:8px}
+.ticket-msg{background:var(--bg-3);border-radius:8px;padding:8px 10px;font-size:13px;align-self:flex-start;max-width:85%}
+.ticket-msg.staff{align-self:flex-end;background:var(--accent);color:#fff}
+.ticket-msg.staff b{color:#fff}
+
+/* Staff stats */
+.staff-stat-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.staff-stat-row:last-child{border-bottom:none}
+.staff-stat-badges{display:flex;gap:8px;font-size:12px;color:var(--text-3)}
+
+/* Simple bar chart */
+.bar-chart{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.bar-row{display:flex;align-items:center;gap:10px;font-size:13px}
+.bar-label{width:120px;flex-shrink:0;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{flex:1;height:14px;background:var(--bg-input);border-radius:99px;overflow:hidden}
+.bar-fill{height:100%;background:var(--accent);border-radius:99px;transition:width .4s}
+.bar-value{width:46px;text-align:left;color:var(--text-3);font-size:12px;flex-shrink:0}
+.stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:18px}
+.stat-card{background:var(--bg-3);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center}
+.stat-card .stat-num{font-size:24px;font-weight:800;color:var(--accent)}
+.stat-card .stat-lbl{font-size:12px;color:var(--text-3);margin-top:4px}
+
+/* ═══ MOBILE RESPONSIVENESS FOR ADMIN / OWNER PANELS ═══ */
+@media (max-width:768px){
+  .op-tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+  .op-tabs .op-tab{flex-shrink:0;white-space:nowrap}
+  .op-user-row{flex-wrap:wrap}
+  .op-actions{width:100%;justify-content:flex-start}
+  .a-title{font-size:16px}
+  .t-wrap table{font-size:12px}
+  .t-wrap th,.t-wrap td{padding:6px 8px !important}
+  .input-row{flex-direction:column;align-items:stretch}
+  .input-row input,.input-row select,.input-row button{width:100%}
+  .global-announce-bar{font-size:12px;padding:8px 36px}
+  .stat-cards{grid-template-columns:repeat(2,1fr)}
+  .bar-label{width:80px;font-size:11px}
+  .modal{max-width:94vw !important;max-height:88vh;overflow-y:auto}
+  .toggle-row{font-size:13px}
+  .word-pill{font-size:11px}
+}
+@media (max-width:480px){
+  .stat-cards{grid-template-columns:1fr 1fr}
+  .op-tab{font-size:12px;padding:6px 10px}
+}

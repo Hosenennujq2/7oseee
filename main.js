@@ -14,12 +14,14 @@ function loadDB(){
   if(!DB.friendRequests)DB.friendRequests=[];
   if(!DB.groups)DB.groups={};
   if(!DB.coOwners)DB.coOwners=[];
-  if(!DB.maintenance)DB.maintenance={active:false,message:'التطبيق تحت الصيانة حالياً، نعتذر عن الإزعاج 🛠️'};
+  if(!DB.staffStats)DB.staffStats={};
   if(!DB.announcement)DB.announcement={active:false,text:'',color:'#5865f2'};
   Object.values(DB.users).forEach(u=>{if(!u.friends)u.friends=[];if(u.customStatus===undefined)u.customStatus='';});
   Object.values(DB.servers).forEach(sv=>{
     if(!sv.automod)sv.automod={bannedWords:[],antiLink:false,antiInvite:false,antiSpam:false};
     if(!sv.warnings)sv.warnings={};
+    if(!sv.customRoles)sv.customRoles=[];
+    if(!sv.tickets)sv.tickets=[];
   });
   saveDB();
 }
@@ -69,6 +71,11 @@ function roleLabel(r){return ROLE_PERMS[r]?.label||'';}
 function roleCls(r){return{owner:'owner',leader:'leader',manager:'manager','admin-mgr':'admin-mgr',head:'head',super:'super',helper:'helper',user:'user'}[r]||'user';}
 function badge(r){const l=roleLabel(r);if(!l||r==='user')return '';const color=getRoleColor(r);const icon=getRoleIcon(r);return `<span class="role-badge rb-${roleCls(r)}" style="border-color:${color}22;color:${color}">${icon} ${l}</span>`;}
 function avatarColor(u){const p=['#5865f2','#3ba55c','#ed4245','#faa61a','#9b59b6','#3498db','#1abc9c','#e74c3c','#e67e22','#16a085'];let h=0;for(let i=0;i<u.length;i++)h=(h+u.charCodeAt(i))%p.length;return p[h];}
+function customTagHtml(sid,uname){
+  const sv=DB.servers[sid];const m=sv?.members?.[uname];if(!m?.customTag)return '';
+  const tag=(sv.customRoles||[]).find(t=>t.id===m.customTag);if(!tag)return '';
+  return `<span class="custom-tag" style="background:${tag.color}26;color:${tag.color};border:1px solid ${tag.color}66">${esc(tag.icon||'🏷️')} ${esc(tag.name)}</span>`;
+}
 function myServerRole(sid){const sv=DB.servers[sid];if(!sv)return 'user';const u=DB.users[me?.username];if(u?.role==='owner')return 'owner';if(sv.owner===me?.username)return 'owner';return sv.members?.[me?.username]?.role||'user';}
 function isOwnerUser(){return me?.username==='hosennujq2'||(DB.coOwners||[]).includes(me?.username);}
 function isMainOwner(){return me?.username==='hosennujq2';}
@@ -108,8 +115,19 @@ function processMsg(t){
 function switchAuthTab(tab){document.getElementById('loginForm').classList.toggle('hidden',tab!=='login');document.getElementById('registerForm').classList.toggle('hidden',tab!=='register');document.querySelectorAll('.auth-tab').forEach((el,i)=>el.classList.toggle('active',(tab==='login'&&i===0)||(tab==='register'&&i===1)));}
 function doGoogleLogin(){const fb=window._firebase;if(!fb?.ready){toast('⚠️ Firebase غير مفعّل','err');return;}const provider=new fb.GoogleAuthProvider();fb.signInWithPopup(fb.auth,provider).then(r=>handleFirebaseUser(r.user)).catch(()=>toast('❌ فشل تسجيل الدخول','err'));}
 async function handleFirebaseUser(fu){const username='g_'+fu.uid.slice(0,8);if(!DB.users[username])DB.users[username]={password:fu.uid,display:fu.displayName||username,tag:'#GOOG',role:'user',avatar:'😀',status:'online',joinDate:new Date().toISOString(),email:fu.email||'',photoURL:fu.photoURL||'',banner:'',bannerColor:'#5865f2',badges:['early'],nitro:false,boosts:0,friends:[],customStatus:''};DB.users[username].photoURL=fu.photoURL||'';if(!DB.users[username].friends)DB.users[username].friends=[];saveDB();me={username,...DB.users[username]};bootApp();}
-function doLogin(){const u=document.getElementById('loginUser').value.trim().toLowerCase();const p=document.getElementById('loginPass').value;const errEl=document.getElementById('loginError');const user=DB.users[u];if(!user||user.password!==p){showErr(errEl,'❌ اسم المستخدم أو كلمة المرور غلط');document.getElementById('loginPass').value='';return;}if(user.banned){showErr(errEl,'🔨 هذا الحساب محظور من التطبيق');return;}if(DB.maintenance?.active&&u!=='hosennujq2'&&!(DB.coOwners||[]).includes(u)){showErr(errEl,'🛠️ '+(DB.maintenance.message||'التطبيق تحت الصيانة حالياً'));return;}errEl.style.display='none';DB.users[u].status='online';saveDB();me={username:u,...DB.users[u]};addLog(null,'تسجيل دخول',u);logLogin(u);bootApp();}
-function doRegister(){const u=document.getElementById('regUser').value.trim().toLowerCase();const disp=document.getElementById('regDisplay').value.trim();const email=document.getElementById('regEmail').value.trim();const p=document.getElementById('regPass').value;const errEl=document.getElementById('regError');if(!u||!disp||!p){showErr(errEl,'❌ يرجى ملء جميع الحقول');return;}if(u.length<3){showErr(errEl,'❌ اسم المستخدم قصير');return;}if(!/^[a-z0-9_]+$/.test(u)){showErr(errEl,'❌ أحرف إنجليزية وأرقام فقط');return;}if(p.length<6){showErr(errEl,'❌ كلمة المرور قصيرة');return;}if(DB.users[u]){showErr(errEl,'❌ اسم المستخدم مستخدم');return;}const tag='#'+String(Object.keys(DB.users).length+1).padStart(4,'0');DB.users[u]={password:p,display:disp,tag,email,role:'user',avatar:'😀',status:'online',joinDate:new Date().toISOString(),theme:'dark',bio:'',banner:'',bannerColor:'#5865f2',badges:['early'],nitro:false,boosts:0,friends:[],customStatus:''};saveDB();me={username:u,...DB.users[u]};addLog(null,'تسجيل حساب',u);bootApp();}
+async function sha256Hex(str){
+  if(!window.crypto?.subtle)return 'plain:'+str;
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+  return 'sha256:'+Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function verifyPassword(stored,input){
+  if(!stored)return false;
+  if(stored.startsWith('sha256:'))return (await sha256Hex(input))===stored;
+  if(stored.startsWith('plain:'))return stored==='plain:'+input;
+  return stored===input; // legacy plaintext from before hashing was added
+}
+async function doLogin(){const u=document.getElementById('loginUser').value.trim().toLowerCase();const p=document.getElementById('loginPass').value;const errEl=document.getElementById('loginError');const user=DB.users[u];if(!user||!(await verifyPassword(user.password,p))){showErr(errEl,'❌ اسم المستخدم أو كلمة المرور غلط');document.getElementById('loginPass').value='';return;}if(user.banned){showErr(errEl,'🔨 هذا الحساب محظور من التطبيق');return;}if(DB.maintenance?.active&&u!=='hosennujq2'&&!(DB.coOwners||[]).includes(u)){showErr(errEl,'🛠️ '+(DB.maintenance.message||'التطبيق تحت الصيانة حالياً'));return;}if(!user.password.startsWith('sha256:')&&!user.password.startsWith('plain:')){DB.users[u].password=await sha256Hex(p);}errEl.style.display='none';DB.users[u].status='online';saveDB();me={username:u,...DB.users[u]};addLog(null,'تسجيل دخول',u);logLogin(u);bootApp();}
+async function doRegister(){const u=document.getElementById('regUser').value.trim().toLowerCase();const disp=document.getElementById('regDisplay').value.trim();const email=document.getElementById('regEmail').value.trim();const p=document.getElementById('regPass').value;const errEl=document.getElementById('regError');if(!u||!disp||!p){showErr(errEl,'❌ يرجى ملء جميع الحقول');return;}if(u.length<3){showErr(errEl,'❌ اسم المستخدم قصير');return;}if(!/^[a-z0-9_]+$/.test(u)){showErr(errEl,'❌ أحرف إنجليزية وأرقام فقط');return;}if(p.length<6){showErr(errEl,'❌ كلمة المرور قصيرة');return;}if(DB.users[u]){showErr(errEl,'❌ اسم المستخدم مستخدم');return;}const tag='#'+String(Object.keys(DB.users).length+1).padStart(4,'0');const hashed=await sha256Hex(p);DB.users[u]={password:hashed,display:disp,tag,email,role:'user',avatar:'😀',status:'online',joinDate:new Date().toISOString(),theme:'dark',bio:'',banner:'',bannerColor:'#5865f2',badges:['early'],nitro:false,boosts:0,friends:[],customStatus:''};saveDB();me={username:u,...DB.users[u]};addLog(null,'تسجيل حساب',u);bootApp();}
 function showErr(el,msg){el.textContent=msg;el.style.display='block';}
 function doLogout(){leaveVoiceChannel();if(me&&DB.users[me.username])DB.users[me.username].status='offline';saveDB();const fb=window._firebase;if(fb?.ready&&fb.auth?.currentUser)fb.signOut(fb.auth).catch(()=>{});me=null;activeServer=null;activeChannel=null;activeDM=null;document.getElementById('app').classList.add('hidden');document.getElementById('authPage').classList.remove('hidden');}
 function checkPassStrength(p){const el=document.getElementById('passStrength');if(!el)return;if(!p){el.className='pass-strength';return;}let s=0;if(p.length>=8)s++;if(/[A-Za-z]/.test(p))s++;if(/[0-9]/.test(p))s++;if(/[^A-Za-z0-9]/.test(p))s++;el.className='pass-strength '+(s<=1?'weak':s<=2?'medium':'strong');}
@@ -124,6 +142,7 @@ function showAnnouncementBanner(){
   document.getElementById('globalAnnounceBar')?.remove();
   const a=DB.announcement;
   if(!a?.active||!a.text)return;
+  if(a.scheduledAt&&a.scheduledAt>Date.now())return;
   if(sessionStorage.getItem('announce_dismissed')===a.text)return;
   const bar=document.createElement('div');
   bar.id='globalAnnounceBar';
@@ -491,6 +510,7 @@ function renderChannels(sid){
       </div>`;
     });
   });
+  html+=`<div class="ch-admin-link" style="color:var(--text-3)" onclick="openMyTickets('${sid}')">🎫 تذاكر الدعم</div>`;
   if(isOwnerUser())html+=`<div class="ch-admin-link" onclick="openOwnerPanel()">👑 لوحة التحكم</div>`;
   document.getElementById('chScroll').innerHTML=html;
 }
@@ -502,7 +522,7 @@ function renderMembers(sid){
   Object.entries(sv.members).forEach(([uname,m])=>{const u=DB.users[uname];if(!u)return;const r=u.role==='owner'?'owner':(m.role||'user');if(!grouped[r])grouped[r]=[];grouped[r].push({uname,u,r});});
   const catNames={owner:'الأونر',leader:'الليدر',manager:'المانجر','admin-mgr':'أدمن مانجر',head:'هيد أدمن',super:'سوبر أدمن',helper:'الهيلبر',user:'الأعضاء'};
   let html=`<div class="members-title">الأعضاء — ${Object.keys(sv.members).length}</div>`;
-  ROLE_ORDER.forEach(r=>{if(!grouped[r]?.length)return;html+=`<div class="m-cat">${catNames[r]||r} — ${grouped[r].length}</div>`;grouped[r].forEach(({uname,u,r:role})=>{const status=u.status||'offline';html+=`<div class="m-item" onclick="showProfile('${uname}')"><div class="m-avatar" style="background:${avatarColor(uname)}">${u.photoURL?`<img src="${u.photoURL}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`:`<span>${esc((u.avatar||u.display[0]).slice(0,2))}</span>`}<div class="m-status ${status}"></div></div><div><div class="m-nick rc-${roleCls(role)}">${esc(u.display)}</div>${roleLabel(role)?`<div class="m-role-label">${roleLabel(role)}</div>`:''}</div></div>`;});});
+  ROLE_ORDER.forEach(r=>{if(!grouped[r]?.length)return;html+=`<div class="m-cat">${catNames[r]||r} — ${grouped[r].length}</div>`;grouped[r].forEach(({uname,u,r:role})=>{const status=u.status||'offline';html+=`<div class="m-item" onclick="showProfile('${uname}')"><div class="m-avatar" style="background:${avatarColor(uname)}">${u.photoURL?`<img src="${u.photoURL}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`:`<span>${esc((u.avatar||u.display[0]).slice(0,2))}</span>`}<div class="m-status ${status}"></div></div><div><div class="m-nick rc-${roleCls(role)}">${esc(u.display)}</div><div class="m-role-label">${roleLabel(role)||''} ${customTagHtml(sid,uname)}</div></div></div>`;});});
   if(panel)panel.innerHTML=html;
 }
 function toggleMembersPanel(){showMembers=!showMembers;if(activeServer)renderMembers(activeServer);else{const p=document.getElementById('membersPanel');if(p)p.innerHTML='';}}
@@ -575,7 +595,7 @@ function renderMessages(){
     html+=`<div class="msg-group${isOwn?' own':''}" id="msg-${msg.id}" data-msgid="${msg.id}">
       <div class="msg-av" style="background:${avatarColor(msg.user)}" onclick="showProfile('${msg.user}')">${u.photoURL?`<img src="${u.photoURL}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`:esc((u.avatar||u.display[0]).slice(0,2))}</div>
       <div class="msg-body">
-        <div class="msg-meta"><span class="${nameCls}" onclick="showProfile('${msg.user}')">${esc(u.display)}</span>${badge(r)}<span class="badges-row">${renderBadges(u)}</span><span class="msg-ts">${fmtRel(msg.time)}</span></div>
+        <div class="msg-meta"><span class="${nameCls}" onclick="showProfile('${msg.user}')">${esc(u.display)}</span>${badge(r)}${customTagHtml(activeServer,msg.user)}<span class="badges-row">${renderBadges(u)}</span><span class="msg-ts">${fmtRel(msg.time)}</span></div>
         ${replyHtml}${contentHtml}${reactHtml}
       </div>
       <div class="msg-actions">
@@ -676,6 +696,8 @@ function renderAdmin(){
     case 'invites':renderAdminInvites(sv,body,myRole);break;
     case 'automod':renderAdminAutomod(sv,body,myRole);break;
     case 'warnings':renderAdminWarnings(sv,body,myRole);break;
+    case 'customroles':renderAdminCustomRoles(sv,body,myRole);break;
+    case 'tickets':renderAdminTickets(sv,body,myRole);break;
     case 'settings':renderAdminSettings(sv,body,myRole);break;
     default:body.innerHTML='<div class="empty"><p>قريباً</p></div>';
   }
@@ -736,8 +758,13 @@ function renderAdminMembers(sv,el,myRole){
 }
 function promptWarning(sid,uname){const reason=prompt('سبب التحذير (اختياري):','');if(reason===null)return;addWarning(sid,uname,reason.trim());}
 function setMemberRole(sid,uname,newRole){const sv=DB.servers[sid];if(!sv?.members[uname])return;sv.members[uname].role=newRole;if(DB.users[uname])DB.users[uname].role=newRole;saveDB();addLog(sid,'تغيير رتبة',me.username,uname+'←'+newRole);toast('✅ تم تغيير الرتبة إلى '+roleLabel(newRole));renderAdmin();renderMembers(sid);}
-function kickMember(sid,uname){if(uname===me.username){toast('❌ لا يمكنك طرد نفسك','err');return;}if(!confirm('هل تريد طرد '+DB.users[uname]?.display+'؟'))return;delete DB.servers[sid].members[uname];saveDB();addLog(sid,'طرد عضو',me.username,uname);toast('👟 تم الطرد');renderAdmin();renderMembers(sid);}
-function banMember(sid,uname){if(uname===me.username){toast('❌ لا يمكنك حظر نفسك','err');return;}if(!confirm('هل تريد حظر '+DB.users[uname]?.display+'؟'))return;const sv=DB.servers[sid];if(!sv.bans)sv.bans=[];if(!sv.bans.includes(uname))sv.bans.push(uname);delete sv.members[uname];saveDB();addLog(sid,'حظر عضو',me.username,uname);toast('🔨 تم الحظر');renderAdmin();renderMembers(sid);}
+function kickMember(sid,uname){if(uname===me.username){toast('❌ لا يمكنك طرد نفسك','err');return;}if(!confirm('هل تريد طرد '+DB.users[uname]?.display+'؟'))return;delete DB.servers[sid].members[uname];bumpStaffStat(me.username,'kicks');saveDB();addLog(sid,'طرد عضو',me.username,uname);toast('👟 تم الطرد');renderAdmin();renderMembers(sid);}
+function bumpStaffStat(uname,key){
+  if(!DB.staffStats)DB.staffStats={};
+  if(!DB.staffStats[uname])DB.staffStats[uname]={kicks:0,bans:0,mutes:0,warnings:0};
+  DB.staffStats[uname][key]=(DB.staffStats[uname][key]||0)+1;
+}
+function banMember(sid,uname){if(uname===me.username){toast('❌ لا يمكنك حظر نفسك','err');return;}if(!confirm('هل تريد حظر '+DB.users[uname]?.display+'؟'))return;const sv=DB.servers[sid];if(!sv.bans)sv.bans=[];if(!sv.bans.includes(uname))sv.bans.push(uname);delete sv.members[uname];bumpStaffStat(me.username,'bans');saveDB();addLog(sid,'حظر عضو',me.username,uname);toast('🔨 تم الحظر');renderAdmin();renderMembers(sid);}
 
 /* ─── TIMED MUTE ─── */
 const MUTE_DURATIONS={'5':'5 دقائق','30':'30 دقيقة','60':'ساعة','1440':'يوم كامل','10080':'أسبوع'};
@@ -755,6 +782,7 @@ function openMuteMenu(sid,uname){
 function muteMemberTimed(sid,uname,minutes){
   const sv=DB.servers[sid];const m=sv?.members?.[uname];if(!m)return;
   m.mutedUntil=Date.now()+minutes*60000;
+  bumpStaffStat(me.username,'mutes');
   saveDB();addLog(sid,'كتم مؤقت',me.username,uname+' ← '+minutes+' دقيقة');
   document.getElementById('muteMenuOv')?.remove();
   toast('🔇 تم كتم '+(DB.users[uname]?.display||uname));renderAdmin();renderMembers(sid);
@@ -770,8 +798,15 @@ function addWarning(sid,uname,reason){
   const sv=DB.servers[sid];if(!sv)return;if(!sv.warnings)sv.warnings={};
   if(!sv.warnings[uname])sv.warnings[uname]=[];
   sv.warnings[uname].push({id:uid(),reason:reason||'بدون سبب',by:me.username,time:new Date().toISOString()});
+  bumpStaffStat(me.username,'warnings');
   saveDB();addLog(sid,'إصدار تحذير',me.username,uname+(reason?' — '+reason:''));
-  toast('⚠️ تم تحذير '+(DB.users[uname]?.display||uname));renderAdmin();
+  toast('⚠️ تم تحذير '+(DB.users[uname]?.display||uname));
+  const count=sv.warnings[uname].length;
+  if(count>0&&count%3===0){
+    const m=sv.members[uname];
+    if(m){m.mutedUntil=Date.now()+24*60*60000;saveDB();addLog(sid,'كتم تلقائي (3 تحذيرات)','النظام',uname+' ← 24 ساعة');toast('🔇 تم كتم '+(DB.users[uname]?.display||uname)+' تلقائياً 24 ساعة (3 تحذيرات)','err');}
+  }
+  renderAdmin();
 }
 function removeWarning(sid,uname,wid){
   const sv=DB.servers[sid];if(!sv?.warnings?.[uname])return;
@@ -858,6 +893,134 @@ function renderAdminWarnings(sv,el,myRole){
     ${canEdit?`<p class="m-sub" style="margin-bottom:12px">💡 لإصدار تحذير لعضو، اذهب لتبويب "الأعضاء" واضغط ⚠️ تحذير.</p>`:''}
     <div class="t-wrap"><table><thead><tr><th>العضو</th><th>السبب</th><th>بواسطة</th><th>التاريخ</th><th>إجراء</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-4)">لا توجد تحذيرات</td></tr>'}</tbody></table></div>`;
 }
+/* ─── CUSTOM ROLES (TAGS) ─── */
+const CUSTOM_TAG_COLORS=['#5865f2','#3ba55c','#ed4245','#faa61a','#9b59b6','#3498db','#1abc9c','#e67e22','#e91e63','#00bcd4'];
+function renderAdminCustomRoles(sv,el,myRole){
+  const canEdit=myRole==='owner'||myRole==='leader';
+  const tags=sv.customRoles||[];
+  const tagRows=tags.map(t=>`<span class="custom-tag" style="background:${t.color}26;color:${t.color};border:1px solid ${t.color}66">${esc(t.icon||'🏷️')} ${esc(t.name)}${canEdit?` <b onclick="removeCustomRole('${sv.id}','${t.id}')">✕</b>`:''}</span>`).join(' ')||'<span style="color:var(--text-4);font-size:13px">لا توجد رتب مخصصة</span>';
+  let memberRows='';
+  Object.keys(sv.members).forEach(uname=>{
+    const u=DB.users[uname];if(!u)return;
+    memberRows+=`<tr><td style="font-weight:600">${esc(u.display)}</td><td>
+      <select class="role-sel" ${canEdit?'':'disabled'} onchange="assignCustomTag('${sv.id}','${uname}',this.value)">
+        <option value="">— بدون —</option>
+        ${tags.map(t=>`<option value="${t.id}" ${sv.members[uname].customTag===t.id?'selected':''}>${esc(t.icon||'🏷️')} ${esc(t.name)}</option>`).join('')}
+      </select>
+    </td></tr>`;
+  });
+  el.innerHTML=`<div class="a-title">🏷️ رتب مخصصة (Tags)</div>
+    <p class="m-sub">رتب مخصصة تظهر كوسم بجانب اسم العضو في الشات وقائمة الأعضاء (للعرض فقط، لا تؤثر على الصلاحيات).</p>
+    ${canEdit?`<div class="t-wrap" style="padding:16px;margin-bottom:16px">
+      <h3 style="margin-bottom:12px">➕ إنشاء رتبة جديدة</h3>
+      <div class="input-row" style="flex-wrap:wrap;gap:8px">
+        <input type="text" id="ctagName" placeholder="اسم الرتبة (مثال: مصمم)" style="flex:1;min-width:140px">
+        <input type="text" id="ctagIcon" placeholder="إيموجي" maxlength="2" style="width:70px">
+        <select id="ctagColor" style="width:110px">${CUSTOM_TAG_COLORS.map(c=>`<option value="${c}" style="background:${c}">${c}</option>`).join('')}</select>
+        <button class="btn btn-accent" onclick="addCustomRole('${sv.id}')">إضافة</button>
+      </div>
+    </div>`:''}
+    <div class="t-wrap" style="padding:16px;margin-bottom:16px"><h3 style="margin-bottom:12px">الرتب الحالية</h3><div style="display:flex;flex-wrap:wrap;gap:8px">${tagRows}</div></div>
+    <div class="t-wrap"><table><thead><tr><th>العضو</th><th>الرتبة المخصصة</th></tr></thead><tbody>${memberRows}</tbody></table></div>`;
+}
+function addCustomRole(sid){
+  const sv=DB.servers[sid];const name=document.getElementById('ctagName')?.value.trim();const icon=document.getElementById('ctagIcon')?.value.trim()||'🏷️';const color=document.getElementById('ctagColor')?.value||'#5865f2';
+  if(!name){toast('❌ أدخل اسم الرتبة','err');return;}
+  if(!sv.customRoles)sv.customRoles=[];
+  sv.customRoles.push({id:uid(),name,icon,color});
+  saveDB();addLog(sid,'إنشاء رتبة مخصصة',me.username,name);toast('✅ تم إنشاء الرتبة');renderAdmin();
+}
+function removeCustomRole(sid,tid){
+  const sv=DB.servers[sid];if(!sv?.customRoles)return;
+  sv.customRoles=sv.customRoles.filter(t=>t.id!==tid);
+  Object.values(sv.members).forEach(m=>{if(m.customTag===tid)delete m.customTag;});
+  saveDB();addLog(sid,'حذف رتبة مخصصة',me.username,'');toast('🗑️ تم الحذف');renderAdmin();
+}
+function assignCustomTag(sid,uname,tid){
+  const sv=DB.servers[sid];const m=sv?.members?.[uname];if(!m)return;
+  if(tid)m.customTag=tid;else delete m.customTag;
+  saveDB();addLog(sid,'تعيين رتبة مخصصة',me.username,uname);toast('✅ تم التحديث');renderMembers(sid);renderAdmin();
+}
+
+/* ─── SUPPORT TICKETS ─── */
+function renderAdminTickets(sv,el,myRole){
+  const canManageT=isStaff(myRole)||myRole==='owner';
+  const tickets=[...(sv.tickets||[])].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  const rows=tickets.map(t=>{
+    const u=DB.users[t.user];
+    return `<tr>
+      <td style="font-weight:600">#${esc(t.id.slice(0,5))}</td>
+      <td>${esc(u?.display||t.user)}</td>
+      <td>${esc(t.subject)}</td>
+      <td>${t.status==='open'?'<span style="color:var(--green)">🟢 مفتوحة</span>':'<span style="color:var(--text-4)">⚫ مغلقة</span>'}</td>
+      <td>${fmtDate(t.createdAt)}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="openTicketDetail('${sv.id}','${t.id}')">👁️ عرض</button></td>
+    </tr>`;
+  }).join('');
+  el.innerHTML=`<div class="a-title">🎫 تذاكر الدعم</div>
+    ${canManageT?'':'<p class="m-sub">هذا القسم لفريق الإدارة فقط.</p>'}
+    <div class="t-wrap"><table><thead><tr><th>#</th><th>العضو</th><th>الموضوع</th><th>الحالة</th><th>التاريخ</th><th>إجراء</th></tr></thead><tbody>${rows||'<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-4)">لا توجد تذاكر</td></tr>'}</tbody></table></div>`;
+}
+function openTicketDetail(sid,tid){
+  const sv=DB.servers[sid];const t=sv?.tickets?.find(x=>x.id===tid);if(!t)return;
+  const canManageT=isStaff(myServerRole(sid))||myServerRole(sid)==='owner';
+  const ov=document.createElement('div');ov.className='modal-overlay';ov.id='ticketDetailOv';
+  const msgsHtml=(t.messages||[]).map(m=>`<div class="ticket-msg ${m.from===t.user?'':'staff'}"><b>${esc(DB.users[m.from]?.display||m.from)}:</b> ${esc(m.text)}<div style="font-size:10px;color:var(--text-4)">${fmtDate(m.time)} ${fmtTime(m.time)}</div></div>`).join('');
+  ov.innerHTML=`<div class="modal" style="max-width:520px">
+    <h2>🎫 ${esc(t.subject)}</h2>
+    <p class="m-sub">من: ${esc(DB.users[t.user]?.display||t.user)} — ${t.status==='open'?'🟢 مفتوحة':'⚫ مغلقة'}</p>
+    <div class="ticket-thread" id="ticketThread">${msgsHtml||'<p class="m-sub">لا توجد رسائل بعد</p>'}</div>
+    ${t.status==='open'?`<div class="input-row" style="margin-top:10px"><input type="text" id="ticketReplyInput" placeholder="اكتب رداً..."><button class="btn btn-accent" onclick="replyTicket('${sid}','${tid}')">إرسال</button></div>`:''}
+    <div class="modal-footer">
+      ${(canManageT&&t.status==='open')?`<button class="btn btn-danger" onclick="closeTicket('${sid}','${tid}')">🔒 إغلاق التذكرة</button>`:''}
+      <button class="btn btn-ghost" onclick="document.getElementById('ticketDetailOv').remove()">إغلاق</button>
+    </div>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  document.body.appendChild(ov);
+}
+function replyTicket(sid,tid){
+  const input=document.getElementById('ticketReplyInput');const text=input?.value.trim();if(!text)return;
+  const sv=DB.servers[sid];const t=sv?.tickets?.find(x=>x.id===tid);if(!t)return;
+  if(!t.messages)t.messages=[];
+  t.messages.push({from:me.username,text,time:new Date().toISOString()});
+  saveDB();input.value='';openTicketDetail(sid,tid);renderAdmin();
+}
+function closeTicket(sid,tid){
+  const sv=DB.servers[sid];const t=sv?.tickets?.find(x=>x.id===tid);if(!t)return;
+  t.status='closed';saveDB();addLog(sid,'إغلاق تذكرة',me.username,t.subject);
+  document.getElementById('ticketDetailOv')?.remove();toast('🔒 تم إغلاق التذكرة');renderAdmin();
+}
+/* user-facing: open my tickets list / create new */
+function openMyTickets(sid){
+  const sv=DB.servers[sid];if(!sv)return;
+  const myTickets=(sv.tickets||[]).filter(t=>t.user===me.username).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  const ov=document.createElement('div');ov.className='modal-overlay';ov.id='myTicketsOv';
+  const list=myTickets.map(t=>`<div class="op-user-row" style="cursor:pointer" onclick="document.getElementById('myTicketsOv').remove();openTicketDetail('${sid}','${t.id}')">
+    <div class="op-uinfo"><div class="op-uname">${esc(t.subject)}</div><div class="op-utag">${t.status==='open'?'🟢 مفتوحة':'⚫ مغلقة'} — ${fmtDate(t.createdAt)}</div></div>
+  </div>`).join('')||'<p class="m-sub">لا توجد تذاكر سابقة</p>';
+  ov.innerHTML=`<div class="modal">
+    <h2>🎫 تذاكر الدعم</h2>
+    <p class="m-sub">تواصل مع فريق إدارة السيرفر بشكل خاص</p>
+    <div class="form-group"><label>موضوع التذكرة الجديدة</label><input type="text" id="newTicketSubject" placeholder="مثال: مشكلة في الحساب"></div>
+    <div class="form-group"><label>الرسالة</label><textarea id="newTicketMsg" rows="3" placeholder="اشرح المشكلة..."></textarea></div>
+    <button class="btn btn-accent" onclick="createTicket('${sid}')">📨 إرسال التذكرة</button>
+    <div style="margin-top:16px"><h3 style="margin-bottom:8px;font-size:14px">تذاكري السابقة</h3>${list}</div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('myTicketsOv').remove()">إغلاق</button></div>
+  </div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  document.body.appendChild(ov);
+}
+function createTicket(sid){
+  const subject=document.getElementById('newTicketSubject')?.value.trim();
+  const msg=document.getElementById('newTicketMsg')?.value.trim();
+  if(!subject||!msg){toast('❌ يرجى تعبئة الموضوع والرسالة','err');return;}
+  const sv=DB.servers[sid];if(!sv.tickets)sv.tickets=[];
+  const t={id:uid(),user:me.username,subject,status:'open',createdAt:new Date().toISOString(),messages:[{from:me.username,text:msg,time:new Date().toISOString()}]};
+  sv.tickets.push(t);saveDB();addLog(sid,'فتح تذكرة',me.username,subject);
+  document.getElementById('myTicketsOv')?.remove();toast('✅ تم إرسال التذكرة، سيتم الرد عليك من قبل الإدارة');
+}
+
 function renderAdminSettings(sv,el,myRole){if(myRole!=='owner'){el.innerHTML='<div class="empty"><div class="e-icon">🔒</div><p>هذا القسم للأونر فقط</p></div>';return;}el.innerHTML=`<div class="a-title">⚙️ إعدادات السيرفر</div><div class="form-group"><label>اسم السيرفر</label><input id="edName" type="text" value="${esc(sv.name)}"></div><div class="form-group"><label>إيموجي</label><input id="edEmoji" type="text" value="${esc(sv.emoji||'🎮')}" maxlength="2"></div><div class="form-group"><label>الوصف</label><input id="edDesc" type="text" value="${esc(sv.desc||'')}"></div><div class="form-group"><label><input type="checkbox" id="edPublic" ${sv.isPublic?'checked':''}> السيرفر عام</label></div><div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap"><button class="btn btn-accent" onclick="saveServerSettings('${activeServer}')">💾 حفظ</button><button class="btn btn-danger" onclick="confirmDelete('${activeServer}')">🗑️ حذف السيرفر</button><button class="btn btn-ghost" onclick="leaveServer('${activeServer}')">🚪 مغادرة</button></div>`;}
 function saveServerSettings(sid){const sv=DB.servers[sid];sv.name=document.getElementById('edName')?.value.trim()||sv.name;sv.emoji=document.getElementById('edEmoji')?.value.trim()||sv.emoji;sv.desc=document.getElementById('edDesc')?.value.trim();sv.isPublic=document.getElementById('edPublic')?.checked;saveDB();addLog(sid,'تعديل إعدادات السيرفر',me.username);renderRail();document.getElementById('srvHeader').innerHTML=`<span>${esc(sv.emoji)} ${esc(sv.name)}</span><span class="chevron">▾</span>`;toast('✅ تم الحفظ!');}
 function confirmDelete(sid){if(!confirm('هل أنت متأكد من حذف السيرفر؟ لا يمكن التراجع!'))return;delete DB.servers[sid];saveDB();toast('🗑️ تم حذف السيرفر');activeServer=null;activeChannel=null;renderRail();openHome();}
@@ -1237,6 +1400,7 @@ function openOwnerPanel(){
       <button class="op-tab" onclick="ownerTab('servers',this)">🌐 السيرفرات</button>
       <button class="op-tab" onclick="ownerTab('voice',this)">🔊 كالم</button>
       <button class="op-tab" onclick="ownerTab('users',this)">👥 المستخدمين</button>
+      <button class="op-tab" onclick="ownerTab('stats',this)">📊 الإحصائيات</button>
       <button class="op-tab" onclick="ownerTab('announce',this)">📢 إعلان عام</button>
       <button class="op-tab" onclick="ownerTab('maintenance',this)">🛠️ الصيانة</button>
       <button class="op-tab" onclick="ownerTab('backup',this)">💾 نسخة احتياطية</button>
@@ -1259,6 +1423,7 @@ function ownerTab(tab, el){
   else if(tab==='servers') renderOpServers(body);
   else if(tab==='voice') renderOpVoice(body);
   else if(tab==='users') renderOpUsers(body);
+  else if(tab==='stats') renderOpStats(body);
   else if(tab==='announce') renderOpAnnounce(body);
   else if(tab==='maintenance') renderOpMaintenance(body);
   else if(tab==='backup') renderOpBackup(body);
@@ -1551,6 +1716,41 @@ function renderOpUsers(body){
       </div>`;}).join('')}
     </div>`;
 }
+/* ─── STATS / ANALYTICS ─── */
+function renderOpStats(body){
+  const users=Object.values(DB.users);
+  const servers=Object.values(DB.servers);
+  const totalMsgs=servers.reduce((sum,sv)=>sum+sv.channels.reduce((s,c)=>s+(c.messages?.length||0),0),0);
+  const onlineNow=users.filter(u=>u.status==='online').length;
+  const topByMembers=[...servers].sort((a,b)=>Object.keys(b.members).length-Object.keys(a.members).length).slice(0,5);
+  const maxMembers=Math.max(1,...topByMembers.map(sv=>Object.keys(sv.members).length));
+  const topByMsgs=[...servers].map(sv=>({sv,count:sv.channels.reduce((s,c)=>s+(c.messages?.length||0),0)})).sort((a,b)=>b.count-a.count).slice(0,5);
+  const maxMsgs=Math.max(1,...topByMsgs.map(x=>x.count));
+  // staff activity
+  const staffRows=Object.entries(DB.staffStats||{}).filter(([u])=>DB.users[u]).sort((a,b)=>{
+    const totA=Object.values(a[1]).reduce((s,v)=>s+v,0),totB=Object.values(b[1]).reduce((s,v)=>s+v,0);return totB-totA;
+  }).slice(0,8);
+  body.innerHTML = `
+    <div class="op-section-title">📊 الإحصائيات العامة</div>
+    <div class="stat-cards">
+      <div class="stat-card"><div class="stat-num">${users.length}</div><div class="stat-lbl">إجمالي المستخدمين</div></div>
+      <div class="stat-card"><div class="stat-num">${onlineNow}</div><div class="stat-lbl">متصل الآن</div></div>
+      <div class="stat-card"><div class="stat-num">${servers.length}</div><div class="stat-lbl">السيرفرات</div></div>
+      <div class="stat-card"><div class="stat-num">${totalMsgs}</div><div class="stat-lbl">إجمالي الرسائل</div></div>
+    </div>
+    <div class="t-wrap" style="padding:16px;margin-bottom:16px">
+      <h3 style="margin-bottom:10px">🏆 أكثر السيرفرات أعضاءً</h3>
+      <div class="bar-chart">${topByMembers.map(sv=>{const c=Object.keys(sv.members).length;return `<div class="bar-row"><div class="bar-label">${esc(sv.emoji||'🎮')} ${esc(sv.name)}</div><div class="bar-track"><div class="bar-fill" style="width:${(c/maxMembers*100)}%"></div></div><div class="bar-value">${c}</div></div>`;}).join('')||'<p class="m-sub">لا توجد بيانات</p>'}</div>
+    </div>
+    <div class="t-wrap" style="padding:16px;margin-bottom:16px">
+      <h3 style="margin-bottom:10px">💬 أكثر السيرفرات نشاطاً (رسائل)</h3>
+      <div class="bar-chart">${topByMsgs.map(({sv,count})=>`<div class="bar-row"><div class="bar-label">${esc(sv.emoji||'🎮')} ${esc(sv.name)}</div><div class="bar-track"><div class="bar-fill" style="width:${(count/maxMsgs*100)}%"></div></div><div class="bar-value">${count}</div></div>`).join('')||'<p class="m-sub">لا توجد بيانات</p>'}</div>
+    </div>
+    <div class="t-wrap" style="padding:16px">
+      <h3 style="margin-bottom:10px">🛡️ نشاط فريق الإدارة</h3>
+      <div>${staffRows.map(([uname,s])=>`<div class="staff-stat-row"><span>${esc(DB.users[uname]?.display||uname)}</span><div class="staff-stat-badges"><span>👟 ${s.kicks||0}</span><span>🔨 ${s.bans||0}</span><span>🔇 ${s.mutes||0}</span><span>⚠️ ${s.warnings||0}</span></div></div>`).join('')||'<p class="m-sub">لا يوجد نشاط إداري مسجل بعد</p>'}</div>
+    </div>`;
+}
 function filterOpUsers(q){
   document.querySelectorAll('#opUserList .op-user-row').forEach(row=>{
     row.style.display = row.dataset.name?.includes(q.toLowerCase()) ? '' : 'none';
@@ -1590,21 +1790,27 @@ function ownerDeleteAccount(uname){
 /* ─── ANNOUNCEMENT ─── */
 function renderOpAnnounce(body){
   const a=DB.announcement||{active:false,text:'',color:'#5865f2'};
+  let scheduledVal='';
+  if(a.scheduledAt){const d=new Date(a.scheduledAt);scheduledVal=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
   body.innerHTML = `
     <div class="op-section-title">📢 إعلان عام لكل المستخدمين</div>
     <p class="m-sub">يظهر هذا الإعلان كشريط في أعلى التطبيق لجميع المستخدمين عند فتحه.</p>
     <div class="form-group"><label>نص الإعلان</label><textarea id="opAnnounceText" rows="3" placeholder="مثال: تحديث جديد متوفر الآن! 🎉">${esc(a.text||'')}</textarea></div>
     <div class="form-group"><label>لون الشريط</label><input type="color" id="opAnnounceColor" value="${a.color||'#5865f2'}" style="width:60px;height:38px;border:none;border-radius:8px;cursor:pointer"></div>
+    <div class="form-group"><label>جدولة الظهور (اختياري) — اتركه فارغاً للنشر الفوري</label><input type="datetime-local" id="opAnnounceSchedule" value="${scheduledVal}"></div>
     <label class="toggle-row"><span>تفعيل الإعلان</span><label class="switch"><input type="checkbox" id="opAnnounceActive" ${a.active?'checked':''}><span class="slider"></span></label></label>
-    <button class="btn btn-accent" style="margin-top:12px" onclick="saveAnnouncement()">💾 حفظ ونشر</button>`;
+    <button class="btn btn-accent" style="margin-top:12px" onclick="saveAnnouncement()">💾 حفظ ونشر</button>
+    ${a.scheduledAt&&a.scheduledAt>Date.now()?`<p class="m-sub" style="margin-top:10px;color:var(--accent)">⏰ مجدول للظهور في: ${fmtDate(a.scheduledAt)} ${fmtTime(a.scheduledAt)}</p>`:''}`;
 }
 function saveAnnouncement(){
   const text=document.getElementById('opAnnounceText')?.value.trim()||'';
   const color=document.getElementById('opAnnounceColor')?.value||'#5865f2';
   const active=document.getElementById('opAnnounceActive')?.checked||false;
-  DB.announcement={text,color,active};
+  const schedVal=document.getElementById('opAnnounceSchedule')?.value;
+  const scheduledAt=schedVal?new Date(schedVal).getTime():null;
+  DB.announcement={text,color,active,scheduledAt};
   saveDB();addLog(null,'تحديث الإعلان العام','hosennujq2',active?'تفعيل':'تعطيل');
-  toast(active?'📢 تم نشر الإعلان!':'✅ تم الحفظ');
+  toast(active?'📢 تم حفظ الإعلان!':'✅ تم الحفظ');
   showAnnouncementBanner();
 }
 

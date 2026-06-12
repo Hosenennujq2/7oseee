@@ -206,6 +206,8 @@
         <div class="a-nav-item"        data-tab="invites"   onclick="switchAdminTab('invites')"><span class="a-icon">📨</span> الدعوات</div>
         <div class="a-nav-item"        data-tab="automod"   onclick="switchAdminTab('automod')"><span class="a-icon">🛡️</span> الحماية التلقائية</div>
         <div class="a-nav-item"        data-tab="warnings"  onclick="switchAdminTab('warnings')"><span class="a-icon">⚠️</span> التحذيرات</div>
+        <div class="a-nav-item"        data-tab="customroles" onclick="switchAdminTab('customroles')"><span class="a-icon">🏷️</span> رتب مخصصة</div>
+        <div class="a-nav-item"        data-tab="tickets"   onclick="switchAdminTab('tickets')"><span class="a-icon">🎫</span> التذاكر</div>
         <div class="a-nav-item"        data-tab="settings"  onclick="switchAdminTab('settings')"><span class="a-icon">⚙️</span> إعدادات</div>
       </div>
       <div class="admin-body" id="adminBody"></div>
@@ -383,5 +385,12 @@
 </script>
 
 <script src="main.js"></script>
+<script>
+  if('serviceWorker' in navigator){
+    window.addEventListener('load',()=>{
+      navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    });
+  }
+</script>
 </body>
 </html>
