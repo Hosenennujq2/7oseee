@@ -1,396 +1,83 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <meta name="theme-color" content="#5865f2">
-  <meta name="description" content="Tiscord — تواصل مع أصدقائك بطريقة جديدة">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Tiscord">
-  <title>Tiscord</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;900&family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Xo Store</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
-<!-- SPLASH -->
-<div id="splashScreen">
-  <div class="splash-logo">
-    <div class="splash-icon">🎮</div>
-    <h1>Tiscord</h1>
-  </div>
-  <div class="splash-loader"><div class="splash-bar"></div></div>
-</div>
-
-<!-- TOAST -->
-<div id="toastContainer"></div>
-
-<!-- AUTH PAGE -->
-<div id="authPage" class="hidden">
-  <div class="auth-bg">
-    <div class="auth-particle" style="--x:15%;--y:20%;--s:80px;--d:4s"></div>
-    <div class="auth-particle" style="--x:80%;--y:60%;--s:120px;--d:6s"></div>
-    <div class="auth-particle" style="--x:50%;--y:80%;--s:60px;--d:5s"></div>
-    <div class="auth-particle" style="--x:30%;--y:50%;--s:100px;--d:7s"></div>
-  </div>
-  <div class="auth-wrap">
-    <div class="auth-logo">
-      <div class="logo-mark">🎮</div>
-      <h1>Tiscord</h1>
-      <p>تواصل مع أصدقائك بطريقة جديدة</p>
+  <header class="nav">
+    <div class="nav-inner">
+      <div class="brand">Xo<span>STORE</span></div>
+      <nav class="nav-links">
+        <a href="#products">السكربتات</a>
+        <a href="#lookup">فحص الترخيص</a>
+        <a href="#" class="btn-discord" id="discordLink" target="_blank" rel="noopener">انضم للديسكورد</a>
+      </nav>
     </div>
-    <button class="btn-google" onclick="doGoogleLogin()">
-      <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-      تسجيل الدخول بجوجل
-    </button>
-    <div class="auth-divider"><span>أو</span></div>
-    <div class="auth-tabs">
-      <button class="auth-tab active" onclick="switchAuthTab('login')">تسجيل الدخول</button>
-      <button class="auth-tab" onclick="switchAuthTab('register')">إنشاء حساب</button>
-    </div>
-    <div id="loginForm">
-      <div class="form-group">
-        <label>اسم المستخدم</label>
-        <div class="input-icon-wrap"><span class="inp-icon">👤</span>
-          <input type="text" id="loginUser" placeholder="أدخل اسم المستخدم" autocomplete="username">
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-shape" aria-hidden="true"></div>
+      <div class="hero-inner">
+        <p class="eyebrow">FiveM Scripts · Licensed &amp; Protected</p>
+        <h1>ابنِ سيرفرك<br /><span class="accent">بثقة.</span></h1>
+        <p class="hero-sub">سكربتات مرخّصة، محمية بتشفير قوي، وتسليم وإدارة فورية عبر بوت الديسكورد.</p>
+        <div class="hero-cta">
+          <a href="#products" class="btn-primary">تصفح السكربتات</a>
+          <a href="#lookup" class="btn-ghost">تحقق من ترخيصك</a>
         </div>
       </div>
-      <div class="form-group">
-        <label>كلمة المرور</label>
-        <div class="input-icon-wrap"><span class="inp-icon">🔒</span>
-          <input type="password" id="loginPass" placeholder="أدخل كلمة المرور" autocomplete="current-password">
-          <button class="pass-toggle" onclick="togglePass('loginPass',this)" type="button">👁️</button>
-        </div>
+    </section>
+
+    <section class="products" id="products">
+      <h2><span class="num">01</span> السكربتات</h2>
+      <div class="product-grid">
+        <article class="product-card">
+          <div class="product-tag">PANEL</div>
+          <h3>Xo_Panel</h3>
+          <p>لوحة تحكم وإدارة كاملة لسيرفرك من مكان واحد.</p>
+          <a href="#" class="btn-outline discord-link">عرض بالديسكورد</a>
+        </article>
+        <article class="product-card">
+          <div class="product-tag">ANTI-CHEAT</div>
+          <h3>Xo_ac</h3>
+          <p>حماية من الغش تحافظ على تجربة لعب عادلة للجميع.</p>
+          <a href="#" class="btn-outline discord-link">عرض بالديسكورد</a>
+        </article>
+        <article class="product-card">
+          <div class="product-tag">FILES</div>
+          <h3>XoFilesV3</h3>
+          <p>نظام تسليم وإدارة ملفات لسكربتاتك بشكل آمن.</p>
+          <a href="#" class="btn-outline discord-link">عرض بالديسكورد</a>
+        </article>
       </div>
-      <div class="auth-error" id="loginError"></div>
-      <button class="btn-primary" onclick="doLogin()">🚀 تسجيل الدخول</button>
-    </div>
-    <div id="registerForm" class="hidden">
-      <div class="form-group">
-        <label>اسم المستخدم</label>
-        <div class="input-icon-wrap"><span class="inp-icon">👤</span>
-          <input type="text" id="regUser" placeholder="اختر اسم مستخدم فريد" autocomplete="username">
-        </div>
+    </section>
+
+    <section class="lookup" id="lookup">
+      <h2><span class="num">02</span> فحص الترخيص</h2>
+      <p class="lookup-sub">حط مفتاح الترخيص تبعك عشان تشوف حالته وآخر آيبي مسجّل.</p>
+      <div class="lookup-box">
+        <input type="text" id="licenseKeyInput" placeholder="Xo-XXXXXX-XXXXXX-XXXXXX" autocomplete="off" />
+        <button id="checkBtn">تحقق</button>
       </div>
-      <div class="form-group">
-        <label>الاسم المعروض</label>
-        <div class="input-icon-wrap"><span class="inp-icon">✏️</span>
-          <input type="text" id="regDisplay" placeholder="الاسم اللي يشوفه الناس" autocomplete="name">
-        </div>
-      </div>
-      <div class="form-group">
-        <label>البريد الإلكتروني</label>
-        <div class="input-icon-wrap"><span class="inp-icon">📧</span>
-          <input type="email" id="regEmail" placeholder="example@email.com" autocomplete="email" dir="ltr">
-        </div>
-      </div>
-      <div class="form-group">
-        <label>كلمة المرور</label>
-        <div class="input-icon-wrap"><span class="inp-icon">🔒</span>
-          <input type="password" id="regPass" placeholder="8 أحرف على الأقل" autocomplete="new-password">
-          <button class="pass-toggle" onclick="togglePass('regPass',this)" type="button">👁️</button>
-        </div>
-        <div class="pass-strength" id="passStrength"></div>
-      </div>
-      <div class="auth-error" id="regError"></div>
-      <button class="btn-primary" onclick="doRegister()">✨ إنشاء الحساب</button>
-    </div>
-  </div>
-</div>
+      <div id="lookupResult" class="lookup-result hidden"></div>
+      <p class="lookup-note">* الفحص يحتاج إن بوت الديسكورد يكون شغّال ومتصل بهذا الموقع.</p>
+    </section>
+  </main>
 
-<!-- MAIN APP -->
-<div id="app" class="hidden" style="direction:ltr">
-  <div class="mobile-overlay hidden" id="mobileOverlay" onclick="closeMobilePanels()"></div>
+  <footer class="site-footer">
+    <p>Made By 7oseee</p>
+  </footer>
 
-  <!-- Server Rail -->
-  <div class="server-rail" id="serverRail">
-    <div class="s-icon active" id="homeBtn" title="الرئيسية" onclick="openHome()">🏠<div class="server-pip"></div></div>
-    <div class="s-icon" id="dmRailBtn" title="الرسائل المباشرة" onclick="openDMView()">💬<div class="server-pip"></div></div>
-    <div class="rail-sep"></div>
-    <div id="railServers"></div>
-    <div class="rail-sep"></div>
-    <div class="s-icon add" title="إنشاء سيرفر" onclick="openModal('createServerModal')">＋</div>
-    <div class="s-icon add" title="الانضمام بكود" onclick="openModal('joinServerModal')" style="font-size:16px">🔗</div>
-  </div>
-
-  <!-- Channel Panel -->
-  <div class="channel-panel" id="channelPanel">
-    <div class="srv-header" id="srvHeader"><span>🏠 الرئيسية</span></div>
-    <div class="ch-scroll" id="chScroll"></div>
-    <div class="user-bar">
-      <div class="u-avatar" id="barAvatar" style="background:var(--accent)">
-        <span id="barAvLetter">U</span>
-        <div class="u-status online" id="barStatus"></div>
-      </div>
-      <div class="u-info">
-        <div class="u-name" id="barName">مستخدم</div>
-        <div class="u-tag" id="barTag">#0000</div>
-      </div>
-      <button class="icon-btn" title="الإشعارات" onclick="openNotifPanel()" id="notifBtn" style="position:relative">🔔</button>
-      <button class="icon-btn" title="المتجر" onclick="openShop()">🛍️</button>
-      <button class="icon-btn" title="الإعدادات" onclick="openSettings()">⚙️</button>
-      <button class="icon-btn" title="تسجيل الخروج" onclick="doLogout()">🚪</button>
-    </div>
-  </div>
-
-  <!-- Content Area -->
-  <div class="content-area">
-
-    <!-- Home Screen -->
-    <div id="homeScreen" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px;text-align:center"></div>
-
-    <!-- Chat Screen -->
-    <div id="chatScreen" class="hidden" style="flex:1;display:flex;flex-direction:column;min-height:0">
-      <div class="chat-header">
-        <button class="mobile-back-btn" onclick="closeMobilePanels()">◀</button>
-        <span class="ch-sym-big" id="chatSym">#</span>
-        <div class="ch-header-info">
-          <span class="ch-name" id="chatName">عام</span>
-          <span class="ch-desc" id="chatDesc"></span>
-        </div>
-        <div class="header-actions">
-          <button class="icon-btn" title="الأعضاء" onclick="toggleMembersPanel()">👥</button>
-          <button class="icon-btn" title="بحث" onclick="openSearchModal()">🔍</button>
-          <button class="icon-btn" title="الستيكرات" onclick="toggleStickerPicker()">🎭</button>
-          <button class="icon-btn" title="GIF" onclick="openGifPicker()">GIF</button>
-          <button class="icon-btn" title="تصويت" onclick="openCreatePoll(activeServer,activeChannel)">📊</button>
-          <button class="icon-btn" title="وضع التركيز" onclick="toggleFocusMode()">🎯</button>
-          <button class="icon-btn" title="إحصائيات" onclick="openServerStats(activeServer)">📈</button>
-          <button class="icon-btn" title="تلخيص الشات" onclick="summarizeChat()">📋</button>
-          <button class="icon-btn" title="الترجمة التلقائية" onclick="toggleAutoTranslate()">🌍</button>
-          <button class="icon-btn" title="لوحة المتصدرين" onclick="openLeaderboard(activeServer)">🏆</button>
-          <button class="icon-btn" title="الاقتصاد" onclick="openEconomyPanel(activeServer)">🪙</button>
-          <button class="icon-btn" title="البلاغات" onclick="openReportsPanel()">🚨</button>
-          <button class="icon-btn" title="رفع ملف" onclick="openFileUpload()">📎</button>
-        </div>
-      </div>
-      <div class="msgs-wrap" id="msgsWrap">
-        <div class="msgs-inner" id="msgsInner"></div>
-      </div>
-      <div class="typing-indicator hidden" id="typingIndicator">
-        <div class="typing-dots"><span></span><span></span><span></span></div>
-        <span id="typingText"></span>
-      </div>
-      <div class="chat-input-wrap">
-        <div class="reply-preview hidden" id="replyPreview">
-          <span id="replyPreviewText"></span>
-          <button onclick="clearReply()">✕</button>
-        </div>
-        <div class="chat-input-box">
-          <button class="emoji-btn" onclick="toggleEmojiPicker()" title="إيموجي">😊</button>
-          <div class="emoji-picker hidden" id="emojiPicker"></div>
-          <textarea class="chat-input" id="chatInputEl" placeholder="أرسل رسالة..." onkeydown="handleChatKey(event)" oninput="handleTyping(this)" rows="1"></textarea>
-          <button class="icon-btn" onclick="openFileUpload()" title="رفع صورة">📎</button>
-          <button class="send-btn" onclick="sendMsg()">➤</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- DM Screen -->
-    <div id="dmScreen" class="hidden" style="flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden"></div>
-
-    <!-- Admin Screen -->
-    <div id="adminScreen" class="hidden" style="flex:1;display:flex;overflow:hidden">
-      <div class="admin-nav-panel">
-        <div class="admin-nav-label">لوحة الإدارة</div>
-        <div class="a-nav-item active" data-tab="overview"  onclick="switchAdminTab('overview')"><span class="a-icon">📊</span> نظرة عامة</div>
-        <div class="a-nav-item"        data-tab="members"   onclick="switchAdminTab('members')"><span class="a-icon">👥</span> الأعضاء</div>
-        <div class="a-nav-item"        data-tab="roles"     onclick="switchAdminTab('roles')"><span class="a-icon">🎖️</span> الرتب</div>
-        <div class="a-nav-item"        data-tab="channels"  onclick="switchAdminTab('channels')"><span class="a-icon">💬</span> القنوات</div>
-        <div class="a-nav-item"        data-tab="webhooks"  onclick="switchAdminTab('webhooks')"><span class="a-icon">🔗</span> الويبهوك</div>
-        <div class="a-nav-item"        data-tab="logs"      onclick="switchAdminTab('logs')"><span class="a-icon">📋</span> السجلات</div>
-        <div class="a-nav-item"        data-tab="bans"      onclick="switchAdminTab('bans')"><span class="a-icon">🔨</span> المحظورون</div>
-        <div class="a-nav-item"        data-tab="invites"   onclick="switchAdminTab('invites')"><span class="a-icon">📨</span> الدعوات</div>
-        <div class="a-nav-item"        data-tab="automod"   onclick="switchAdminTab('automod')"><span class="a-icon">🛡️</span> الحماية التلقائية</div>
-        <div class="a-nav-item"        data-tab="warnings"  onclick="switchAdminTab('warnings')"><span class="a-icon">⚠️</span> التحذيرات</div>
-        <div class="a-nav-item"        data-tab="customroles" onclick="switchAdminTab('customroles')"><span class="a-icon">🏷️</span> رتب مخصصة</div>
-        <div class="a-nav-item"        data-tab="tickets"   onclick="switchAdminTab('tickets')"><span class="a-icon">🎫</span> التذاكر</div>
-        <div class="a-nav-item"        data-tab="settings"  onclick="switchAdminTab('settings')"><span class="a-icon">⚙️</span> إعدادات</div>
-      </div>
-      <div class="admin-body" id="adminBody"></div>
-    </div>
-
-    <!-- Voice Screen -->
-    <div id="voiceScreen" class="hidden" style="flex:1;display:flex;flex-direction:column;min-height:0"></div>
-
-  </div>
-
-  <!-- Members Panel -->
-  <div class="members-panel" id="membersPanel"></div>
-</div>
-
-<!-- ═══ MODALS ═══ -->
-
-<!-- Create Server -->
-<div class="modal-overlay hidden" id="createServerModal">
-  <div class="modal">
-    <h2>🚀 إنشاء سيرفر جديد</h2>
-    <p class="m-sub">اعطِ سيرفرك اسمًا مميزًا</p>
-    <div class="srv-template-grid">
-      <div class="srv-template active" onclick="selectTemplate(this,'gaming')" data-key="gaming">🎮<br><small>ألعاب</small></div>
-      <div class="srv-template" onclick="selectTemplate(this,'study')" data-key="study">📚<br><small>دراسة</small></div>
-      <div class="srv-template" onclick="selectTemplate(this,'friends')" data-key="friends">🤝<br><small>أصدقاء</small></div>
-      <div class="srv-template" onclick="selectTemplate(this,'art')" data-key="art">🎨<br><small>فن</small></div>
-      <div class="srv-template" onclick="selectTemplate(this,'music')" data-key="music">🎵<br><small>موسيقى</small></div>
-      <div class="srv-template" onclick="selectTemplate(this,'custom')" data-key="custom">⚙️<br><small>مخصص</small></div>
-    </div>
-    <div class="form-group"><label>اسم السيرفر</label><input type="text" id="newSrvName" placeholder="مثال: سيرفر الألعاب"></div>
-    <div class="form-group"><label>إيموجي</label><input type="text" id="newSrvEmoji" placeholder="🎮" maxlength="2" value="🎮"></div>
-    <div class="form-group"><label>وصف السيرفر</label><input type="text" id="newSrvDesc" placeholder="وصف قصير..."></div>
-    <div class="form-group"><label><input type="checkbox" id="srvPublic"> السيرفر عام</label></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('createServerModal')">إلغاء</button>
-      <button class="btn btn-accent" onclick="createServer()">إنشاء ✨</button>
-    </div>
-  </div>
-</div>
-
-<!-- Join Server -->
-<div class="modal-overlay hidden" id="joinServerModal">
-  <div class="modal">
-    <h2>🔗 الانضمام بكود</h2>
-    <p class="m-sub">أدخل كود الدعوة للانضمام</p>
-    <div class="form-group">
-      <label>كود الدعوة</label>
-      <input type="text" id="joinCode" placeholder="مثال: ABC123" style="letter-spacing:4px;font-size:20px;text-align:center;text-transform:uppercase" autocomplete="off">
-    </div>
-    <div class="server-preview hidden" id="serverPreview"></div>
-    <div class="auth-error" id="joinError"></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('joinServerModal')">إلغاء</button>
-      <button class="btn btn-accent" onclick="joinServer()">انضمام 🚀</button>
-    </div>
-  </div>
-</div>
-
-<!-- Add Channel -->
-<div class="modal-overlay hidden" id="addChModal">
-  <div class="modal">
-    <h2>➕ قناة جديدة</h2>
-    <div class="form-group"><label>اسم القناة</label><input type="text" id="addChName" placeholder="مثال: عام"></div>
-    <div class="form-group"><label>نوع القناة</label>
-      <div class="ch-type-grid">
-        <label><input type="radio" name="chType" value="text" checked> 💬 نصية</label>
-        <label><input type="radio" name="chType" value="voice"> 🔊 صوتية</label>
-        <label><input type="radio" name="chType" value="announce"> 📢 إعلانات</label>
-      </div>
-    </div>
-    <div class="form-group"><label>الفئة</label><input type="text" id="addChCat" placeholder="مثال: القنوات العامة"></div>
-    <div class="form-group"><label><input type="checkbox" id="chPrivate"> قناة خاصة (للإدارة فقط)</label></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('addChModal')">إلغاء</button>
-      <button class="btn btn-accent" onclick="addChannel()">إنشاء ✨</button>
-    </div>
-  </div>
-</div>
-
-<!-- Settings -->
-<div class="modal-overlay hidden" id="settingsModal">
-  <div class="modal settings-modal">
-    <h2>⚙️ إعدادات الحساب</h2>
-    <div class="tab-bar">
-      <button class="tab-btn active" data-tab="profile" onclick="renderSettings('profile')">الملف الشخصي</button>
-      <button class="tab-btn" data-tab="security" onclick="renderSettings('security')">الأمان</button>
-      <button class="tab-btn" data-tab="appearance" onclick="renderSettings('appearance')">المظهر</button>
-      <button class="tab-btn" data-tab="notifications" onclick="renderSettings('notifications')">الإشعارات</button>
-      <button class="tab-btn" data-tab="themes" onclick="renderSettings('themes')">الثيمات</button>
-      <button class="tab-btn" data-tab="security2" onclick="renderSettings('security2')">2FA</button>
-    </div>
-    <div id="settingsBody"></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('settingsModal')">إغلاق</button>
-      <button class="btn btn-accent" onclick="saveSettings()">💾 حفظ</button>
-    </div>
-  </div>
-</div>
-
-<!-- Create Account -->
-<div class="modal-overlay hidden" id="createAccountModal">
-  <div class="modal">
-    <h2>👤 إنشاء حساب جديد</h2>
-    <p class="m-sub">الأونر فقط يستطيع إنشاء حسابات مباشرة</p>
-    <div class="form-group"><label>اسم المستخدم</label><input type="text" id="accUser" placeholder="اسم المستخدم الفريد"></div>
-    <div class="form-group"><label>الاسم المعروض</label><input type="text" id="accDisplay" placeholder="الاسم المعروض"></div>
-    <div class="form-group"><label>كلمة المرور</label><input type="password" id="accPass" placeholder="كلمة المرور"></div>
-    <div class="form-group"><label>الرتبة</label>
-      <select id="accRole">
-        <option value="user">عضو عادي</option>
-        <option value="helper">هيلبر</option>
-        <option value="super">سوبر أدمن</option>
-        <option value="head">هيد أدمن</option>
-        <option value="admin-mgr">أدمن مانجر</option>
-        <option value="manager">مانجر</option>
-        <option value="leader">ليدر</option>
-      </select>
-    </div>
-    <div class="auth-error" id="accError"></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('createAccountModal')">إلغاء</button>
-      <button class="btn btn-accent" onclick="createAccount()">إنشاء الحساب ✨</button>
-    </div>
-  </div>
-</div>
-
-<!-- Profile Modal -->
-<div class="modal-overlay hidden" id="profileModal">
-  <div class="modal profile-modal">
-    <div id="profileModalContent"></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('profileModal')">إغلاق</button>
-    </div>
-  </div>
-</div>
-
-<!-- Search Modal -->
-<div class="modal-overlay hidden" id="searchModal">
-  <div class="modal">
-    <h2>🔍 البحث في الرسائل</h2>
-    <div class="form-group"><input type="text" id="searchInput" placeholder="ابحث عن رسالة..." oninput="doSearch(this.value)"></div>
-    <div id="searchResults" class="search-results"></div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('searchModal')">إغلاق</button></div>
-  </div>
-</div>
-
-<!-- Image Modal -->
-<div class="modal-overlay hidden" id="imageModal">
-  <div class="modal image-modal">
-    <img id="imageModalSrc" src="" alt="صورة">
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('imageModal')">إغلاق</button>
-      <a class="btn btn-accent" id="imageDownloadBtn" download>⬇️ تحميل</a>
-    </div>
-  </div>
-</div>
-
-<!-- Firebase SDK -->
-<script type="module">
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-  const firebaseConfig = {
-    apiKey: "AIzaSyC0Vm425f036uvnTrmTLUeSqWvSq1kFTko",
-    authDomain: "tiscoord-d72ce.firebaseapp.com",
-    projectId: "tiscoord-d72ce",
-    storageBucket: "tiscoord-d72ce.firebasestorage.app",
-    messagingSenderId: "747853392671",
-    appId: "1:747853392671:web:1050d27f89853f45e01e2a",
-    measurementId: "G-GRGXVSZ24P"
-  };
-  let firebaseReady=false, app, auth;
-  try { app=initializeApp(firebaseConfig); auth=getAuth(app); firebaseReady=firebaseConfig.apiKey!=="YOUR_API_KEY"; } catch(e){ console.warn('Firebase not configured'); }
-  window._firebase={ ready:firebaseReady, auth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged };
-  if(firebaseReady&&auth) onAuthStateChanged(auth,u=>{ if(u&&window._onFirebaseAuthChange) window._onFirebaseAuthChange(u); });
-</script>
-
-<script src="main.js"></script>
-<script>
-  if('serviceWorker' in navigator){
-    window.addEventListener('load',()=>{
-      navigator.serviceWorker.register('./sw.js').catch(()=>{});
-    });
-  }
-</script>
+  <script src="script.js"></script>
 </body>
 </html>
