@@ -1,0 +1,22 @@
+{
+  "name": "tiscord-v6",
+  "version": "6.0.0",
+  "private": true,
+  "description": "Tiscord backend foundation with secure session-based authentication",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.1.0",
+    "argon2": "^0.41.1",
+    "express-session": "^1.18.1",
+    "connect-sqlite3": "^0.9.15"
+  }
+}
