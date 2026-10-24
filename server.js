@@ -1,345 +1,84 @@
-'use strict';
-
-require('dotenv').config();
-
-const path = require('path');
-const fs = require('fs');
-const express = require('express');
-const session = require('express-session');
-const SQLiteStoreFactory = require('connect-sqlite3');
-const Database = require('better-sqlite3');
-const argon2 = require('argon2');
-const helmet = require('helmet');
-const cookieParser = require('cookie-parser');
-const rateLimit = require('express-rate-limit');
-
-const app = express();
-const PORT = Number(process.env.PORT || 3000);
-const DATA_DIR = path.join(__dirname, 'data');
-
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
-if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.includes('CHANGE_THIS')) {
-  console.warn('WARNING: Set a strong SESSION_SECRET in .env before production.');
-}
-
-const db = new Database(path.join(DATA_DIR, 'tiscord.db'));
-db.pragma('journal_mode = WAL');
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL UNIQUE,
-    display_name TEXT NOT NULL,
-    email TEXT,
-    password_hash TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'user',
-    banned INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS audit_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT,
-    action TEXT NOT NULL,
-    target TEXT,
-    ip TEXT,
-    created_at TEXT NOT NULL
-  );
-`);
-
-const SQLiteStore = SQLiteStoreFactory(session);
-
-app.disable('x-powered-by');
-app.use(helmet({
-  crossOriginEmbedderPolicy: false,
-  contentSecurityPolicy: false
-}));
-app.use(express.json({ limit: '1mb' }));
-app.use(cookieParser());
-
-app.use(session({
-  store: new SQLiteStore({
-    db: 'sessions.db',
-    dir: DATA_DIR
-  }),
-  secret: process.env.SESSION_SECRET || 'development-only-secret-change-me',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 1000 * 60 * 60 * 24 * 7
+// متجر فايف ام - بدون أي مكتبات خارجية. تشغيل: node server.js
+const http=require('http'),fs=require('fs'),path=require('path'),crypto=require('crypto');
+const PORT=process.env.PORT||3000, DB='data.json', LOG='logins.log';
+let db={users:[],products:[{id:'p1',name:'سيارة نادرة',price:50,desc:'سيارة حصرية للسيرفر',img:'',cat:'منتجات مميزة'},{id:'p2',name:'حزمة VIP',price:120,desc:'مزايا VIP لمدة شهر',img:'',cat:'الحزم'}],keys:[]};
+if(fs.existsSync(DB))db=JSON.parse(fs.readFileSync(DB));
+const ADMIN_USER='admin',ADMIN_PASS='MagicCity@2026!x';
+const save=()=>fs.writeFileSync(DB,JSON.stringify(db,null,2));
+const sessions={}, uid=()=>crypto.randomBytes(6).toString('hex');
+const hash=(p,s)=>crypto.scryptSync(p,s,32).toString('hex');
+if(!db.users.some(u=>u.username===ADMIN_USER)){const salt=uid();db.users.push({id:uid(),username:ADMIN_USER,salt,pass:hash(ADMIN_PASS,salt),fivemId:'',balance:0,role:'admin',inventory:[],created:Date.now()});save()}
+if(!fs.existsSync(LOG))fs.writeFileSync(LOG,'')
+const send=(r,c,o,h={})=>{r.writeHead(c,{'Content-Type':'application/json',...h});r.end(JSON.stringify(o))};
+const pub=u=>({id:u.id,username:u.username,fivemId:u.fivemId,balance:u.balance,role:u.role,inventory:u.inventory});
+const mime={'.html':'text/html;charset=utf-8','.js':'text/javascript','.css':'text/css','.png':'image/png'};
+http.createServer((req,res)=>{
+ let body='';req.on('data',d=>body+=d);req.on('end',()=>{
+  const url=req.url.split('?')[0];
+  if(!url.startsWith('/api/')){
+   const f=path.join(__dirname,'public',url==='/'?'index.html':path.normalize(url).replace(/^(\.\.[\/\\])+/,''));
+   return fs.readFile(f,(e,d)=>{if(e){res.writeHead(404);return res.end('404')}res.writeHead(200,{'Content-Type':mime[path.extname(f)]||'application/octet-stream'});res.end(d)});
   }
-}));
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 20,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  message: { ok: false, error: 'محاولات كثيرة. حاول لاحقاً.' }
-});
-
-function now() {
-  return new Date().toISOString();
-}
-
-function cleanUsername(value) {
-  return String(value || '').trim().toLowerCase();
-}
-
-function validUsername(username) {
-  return /^[a-z0-9_]{3,32}$/.test(username);
-}
-
-function publicUser(row) {
-  return {
-    username: row.username,
-    display: row.display_name,
-    email: row.email || '',
-    role: row.role,
-    banned: !!row.banned,
-    createdAt: row.created_at
-  };
-}
-
-function audit(username, action, target, req) {
-  db.prepare(`
-    INSERT INTO audit_logs (username, action, target, ip, created_at)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(
-    username || null,
-    action,
-    target || '',
-    req.ip || '',
-    now()
-  );
-}
-
-function requireAuth(req, res, next) {
-  if (!req.session.user) {
-    return res.status(401).json({
-      ok: false,
-      authenticated: false,
-      error: 'Unauthorized: valid session required.'
-    });
+  let b={};try{b=JSON.parse(body||'{}')}catch{}
+  const tok=(req.headers.cookie||'').match(/sid=(\w+)/)?.[1];
+  const me=db.users.find(u=>u.id===sessions[tok]);
+  const need=()=>{if(!me){send(res,401,{error:'سجّل دخول أولاً'});return false}return true};
+  const adm=()=>{if(!need())return false;if(me.role!=='admin'){send(res,403,{error:'ممنوع'});return false}return true};
+  const ip=req.socket.remoteAddress;
+  const login=(u,why)=>{const t=crypto.randomBytes(24).toString('hex');sessions[t]=u.id;
+   fs.appendFileSync(LOG,`${new Date().toISOString()} | ${why} | ${u.username} | FiveM:${u.fivemId||'-'} | IP:${ip}\n`);
+   send(res,200,{user:pub(u)},{'Set-Cookie':`sid=${t};Path=/;HttpOnly;SameSite=Lax;Max-Age=2592000`})};
+  try{
+  if(url==='/api/register'&&req.method==='POST'){
+   const un=String(b.username||'').trim();if(un.length<3||String(b.password||'').length<4)return send(res,400,{error:'اسم المستخدم 3 أحرف والباسورد 4 على الأقل'});
+   if(db.users.some(u=>u.username.toLowerCase()===un.toLowerCase()))return send(res,400,{error:'الاسم مستخدم'});
+   const salt=uid();const u={id:uid(),username:un,salt,pass:hash(b.password,salt),fivemId:String(b.fivemId||'').trim(),balance:0,role:'user',inventory:[],created:Date.now()};
+   db.users.push(u);save();return login(u,'تسجيل جديد');
   }
-
-  const row = db.prepare('SELECT * FROM users WHERE username = ?').get(req.session.user);
-  if (!row || row.banned) {
-    req.session.destroy(() => {});
-    return res.status(401).json({
-      ok: false,
-      authenticated: false,
-      error: 'Unauthorized: account/session is invalid.'
-    });
+  if(url==='/api/login'&&req.method==='POST'){
+   const u=db.users.find(x=>x.username.toLowerCase()===String(b.username||'').toLowerCase());
+   if(!u||hash(String(b.password||''),u.salt)!==u.pass){fs.appendFileSync(LOG,`${new Date().toISOString()} | فشل دخول | ${b.username} | IP:${ip}\n`);return send(res,400,{error:'بيانات غلط'})}
+   return login(u,'دخول');
   }
-
-  req.authUser = row;
-  next();
-}
-
-async function seedOwner() {
-  const username = cleanUsername(process.env.OWNER_USERNAME || 'hosennujq2');
-  const password = process.env.OWNER_PASSWORD;
-
-  if (!password || password.includes('CHANGE_THIS')) {
-    console.warn('Owner account was not seeded: set OWNER_PASSWORD in .env.');
-    return;
+  if(url==='/api/logout'){delete sessions[tok];return send(res,200,{ok:1},{'Set-Cookie':'sid=;Path=/;Max-Age=0'})}
+  if(url==='/api/me')return send(res,200,{user:me?pub(me):null});
+  if(url==='/api/fivemid'&&req.method==='POST'){if(!need())return;me.fivemId=String(b.fivemId||'').trim();save();return send(res,200,{user:pub(me)})}
+  if(url==='/api/products')return send(res,200,{products:db.products});
+  if(url==='/api/buy'&&req.method==='POST'){if(!need())return;
+   const p=db.products.find(x=>x.id===b.id);if(!p)return send(res,404,{error:'منتج غير موجود'});
+   if(me.balance<p.price)return send(res,400,{error:'رصيدك لا يكفي'});
+   me.balance-=p.price;me.inventory.push({product:p.name,pid:p.id,via:'شراء',date:Date.now()});save();return send(res,200,{user:pub(me)});
   }
-
-  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
-  if (existing) return;
-
-  const passwordHash = await argon2.hash(password, {
-    type: argon2.argon2id
-  });
-
-  db.prepare(`
-    INSERT INTO users
-      (username, display_name, email, password_hash, role, created_at)
-    VALUES (?, ?, ?, ?, 'owner', ?)
-  `).run(
-    username,
-    process.env.OWNER_DISPLAY || username,
-    process.env.OWNER_EMAIL || '',
-    passwordHash,
-    now()
-  );
-
-  console.log(`Owner account created: ${username}`);
-}
-
-app.get('/api/health', (req, res) => {
-  res.json({ ok: true, service: 'tiscord', version: '6.0.0' });
-});
-
-app.post('/api/auth/register', authLimiter, async (req, res) => {
-  try {
-    const username = cleanUsername(req.body.username);
-    const display = String(req.body.display || '').trim();
-    const email = String(req.body.email || '').trim();
-    const password = String(req.body.password || '');
-
-    if (!validUsername(username)) {
-      return res.status(400).json({ ok: false, error: 'اسم المستخدم غير صالح.' });
-    }
-    if (display.length < 2 || display.length > 40) {
-      return res.status(400).json({ ok: false, error: 'الاسم المعروض غير صالح.' });
-    }
-    if (password.length < 8) {
-      return res.status(400).json({ ok: false, error: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل.' });
-    }
-
-    const exists = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
-    if (exists) {
-      return res.status(409).json({ ok: false, error: 'اسم المستخدم مستخدم بالفعل.' });
-    }
-
-    const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
-
-    db.prepare(`
-      INSERT INTO users
-        (username, display_name, email, password_hash, role, created_at)
-      VALUES (?, ?, ?, ?, 'user', ?)
-    `).run(username, display, email, passwordHash, now());
-
-    req.session.user = username;
-    audit(username, 'register', '', req);
-
-    res.status(201).json({
-      ok: true,
-      authenticated: true,
-      user: {
-        username,
-        display,
-        email,
-        role: 'user',
-        banned: false
-      }
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ ok: false, error: 'تعذر إنشاء الحساب.' });
+  if(url==='/api/redeem'&&req.method==='POST'){if(!need())return;
+   const code=String(b.key||'').trim().toUpperCase();const k=db.keys.find(x=>x.code===code);
+   if(!k)return send(res,404,{error:'المفتاح غير صحيح'});
+   if(k.usedBy)return send(res,400,{error:'المفتاح مستخدم من قبل'});
+   const p=db.products.find(x=>x.id===k.pid);if(!p)return send(res,400,{error:'المنتج لم يعد موجود'});
+   k.usedBy=me.username;k.usedAt=Date.now();me.inventory.push({product:p.name,pid:p.id,via:'مفتاح هدية',date:Date.now()});save();
+   return send(res,200,{user:pub(me),product:p.name});
   }
-});
-
-app.post('/api/auth/login', authLimiter, async (req, res) => {
-  try {
-    const username = cleanUsername(req.body.username);
-    const password = String(req.body.password || '');
-
-    const row = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
-
-    if (!row) {
-      return res.status(401).json({ ok: false, error: 'اسم المستخدم أو كلمة المرور غلط.' });
-    }
-
-    if (row.banned) {
-      return res.status(403).json({ ok: false, error: 'هذا الحساب محظور.' });
-    }
-
-    const valid = await argon2.verify(row.password_hash, password);
-    if (!valid) {
-      audit(username, 'login_failed', '', req);
-      return res.status(401).json({ ok: false, error: 'اسم المستخدم أو كلمة المرور غلط.' });
-    }
-
-    req.session.regenerate(err => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ ok: false, error: 'تعذر إنشاء الجلسة.' });
-      }
-
-      req.session.user = username;
-      audit(username, 'login', '', req);
-
-      res.json({
-        ok: true,
-        authenticated: true,
-        user: publicUser(row)
-      });
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ ok: false, error: 'تعذر تسجيل الدخول.' });
+  // ===== أدمن =====
+  if(url==='/api/admin/data'){if(!adm())return;
+   const log=fs.existsSync(LOG)?fs.readFileSync(LOG,'utf8').trim().split('\n').slice(-200).reverse():[];
+   return send(res,200,{users:db.users.map(pub),keys:db.keys,products:db.products,log});
   }
-});
-
-app.get('/api/auth/me', (req, res) => {
-  if (!req.session.user) {
-    return res.json({ ok: true, authenticated: false, user: null });
+  if(url==='/api/admin/product'&&req.method==='POST'){if(!adm())return;
+   if(!b.name)return send(res,400,{error:'الاسم مطلوب'});
+   db.products.push({id:uid(),name:b.name,price:+b.price||0,desc:b.desc||'',img:b.img||'',cat:b.cat||'منتجات مميزة'});save();return send(res,200,{ok:1});
   }
-
-  const row = db.prepare('SELECT * FROM users WHERE username = ?').get(req.session.user);
-
-  if (!row || row.banned) {
-    req.session.destroy(() => {});
-    return res.json({ ok: true, authenticated: false, user: null });
+  if(url==='/api/admin/product/delete'){if(!adm())return;db.products=db.products.filter(p=>p.id!==b.id);save();return send(res,200,{ok:1})}
+  if(url==='/api/admin/key'&&req.method==='POST'){if(!adm())return;
+   const p=db.products.find(x=>x.id===b.pid);if(!p)return send(res,400,{error:'اختر منتج'});
+   const out=[];for(let i=0;i<Math.min(+b.qty||1,50);i++){
+    const code=[0,1,2].map(()=>crypto.randomBytes(2).toString('hex').toUpperCase()).join('-');
+    db.keys.push({code,pid:p.id,product:p.name,created:Date.now(),by:me.username,usedBy:null});out.push(code)}
+   save();return send(res,200,{codes:out});
   }
-
-  res.json({
-    ok: true,
-    authenticated: true,
-    user: publicUser(row)
-  });
-});
-
-app.post('/api/auth/logout', (req, res) => {
-  const username = req.session.user || null;
-
-  req.session.destroy(err => {
-    if (err) {
-      return res.status(500).json({ ok: false, error: 'تعذر تسجيل الخروج.' });
-    }
-
-    if (username) audit(username, 'logout', '', req);
-
-    res.clearCookie('connect.sid');
-    res.json({ ok: true });
-  });
-});
-
-app.get('/api/account', requireAuth, (req, res) => {
-  res.json({ ok: true, user: publicUser(req.authUser) });
-});
-
-app.get('/api/admin/audit', requireAuth, (req, res) => {
-  if (req.authUser.role !== 'owner') {
-    return res.status(403).json({ ok: false, error: 'ليس لديك صلاحية.' });
-  }
-
-  const rows = db.prepare(`
-    SELECT id, username, action, target, ip, created_at
-    FROM audit_logs
-    ORDER BY id DESC
-    LIMIT 200
-  `).all();
-
-  res.json({ ok: true, logs: rows });
-});
-
-// Static frontend
-app.use(express.static(__dirname, {
-  extensions: ['html']
-}));
-
-app.use((req, res) => {
-  if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ ok: false, error: 'API endpoint not found.' });
-  }
-  res.sendFile(path.join(__dirname, 'index(2).html'));
-});
-
-seedOwner()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Tiscord V6 running on http://localhost:${PORT}`);
-    });
-  })
-  .catch(err => {
-    console.error('Startup failed:', err);
-    process.exit(1);
-  });
+  if(url==='/api/admin/key/delete'){if(!adm())return;db.keys=db.keys.filter(k=>k.code!==b.code);save();return send(res,200,{ok:1})}
+  if(url==='/api/admin/balance'){if(!adm())return;const u=db.users.find(x=>x.id===b.id);if(!u)return send(res,404,{error:'؟'});u.balance+=+b.amount||0;save();return send(res,200,{ok:1})}
+  if(url==='/api/admin/role'){if(!adm())return;const u=db.users.find(x=>x.id===b.id);if(!u)return send(res,404,{error:'؟'});u.role=b.role==='admin'?'admin':'user';save();return send(res,200,{ok:1})}
+  if(url==='/api/admin/give'){if(!adm())return;const u=db.users.find(x=>x.id===b.id),p=db.products.find(x=>x.id===b.pid);if(!u||!p)return send(res,404,{error:'؟'});u.inventory.push({product:p.name,pid:p.id,via:'من الأدمن',date:Date.now()});save();return send(res,200,{ok:1})}
+  send(res,404,{error:'غير موجود'});
+  }catch(e){send(res,500,{error:'خطأ بالسيرفر'})}
+ });
+}).listen(PORT,()=>console.log('المتجر شغال على http://localhost:'+PORT));
